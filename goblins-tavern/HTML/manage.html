@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Showcase</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../main.js" defer></script>
+</head>
+
+<body class="manage-page">
+
+    <nav class="top-nav">
+      <img src="../img/Designer.jpeg" alt="Goblin's Logo" class="logo" />
+
+      <div class="nav-links">
+        <button class="nav-button" id="logoutButton">LOGOUT</button>
+        <button class="nav-button" id="modifButton">MODIFY</button>
+      </div>
+
+      <div class="search-container">
+        <input type="text" placeholder="RESEARCH" class="search-bar" />
+        <i class="icon-search"></i>
+      </div>
+    </nav>
+
+    <section >
+        <h2> What a cool adnimistrator your are ~ </h2>
+      </section>
+    
+      <div class="manage-wrapper">
+        <h2>Enter Game Information</h2>
+        <form id="manageForm" class="manage-form">
+          <label>Board Game ID <span class="required">*</span> : <input type="text" name="BD_ID" required /></label>
+          <label>Title <span class="required">*</span> : <input type="text" name="Title" required /></label>
+          <label>Description <span class="required">*</span> : <textarea name="Description" required></textarea></label>
+          <label>Release Year <span class="required">*</span> : <input type="text" name="ReleaseDate" required /></label>
+          <label>Minimum Player <span class="required">*</span> : <input type="text" name="MinP" required /></label>
+          <label>Maximum Players <span class="required">*</span> : <input type="text" name="MaxP" required /></label>
+          <label>Average Playing Time <span class="required">*</span> : <input type="text" name="TimeP" required /></label>
+          <label>Minimum age <span class="required">*</span> : <input type="text" name="Minage" required /></label>
+
+          <label>Owned: <input type="text" id="owned" name="Owned" /></label>
+          <label>Designer: <input type="text" id="designer" name="Designer" /></label>
+          <label>Wanting: <input type="text" id="wanting" name="Wanting" /></label>
+          <label>Artwork URL: <input type="text" id="artwork_url" name="ArtworkUrl" /></label>
+          <label>Publishers: <input type="text" id="publisher" name="Publisher" /></label>
+          <label>Categories: <input type="text" id="category" name="Category" /></label>
+          <label>Mechanics: <input type="text" id="meca_g" name="MecaG" /></label>
+          <label>Rating ID: <input type="text" id="rating_id" name="IDR" /></label>
+          <label>User Rating: <input type="text" id="user_rating" name="UserR" /></label>
+          <label>Average Rating: <input type="text" id="average_rating" name="AvgR" /></label>
+          <label>Game Extention ID: <input type="text" id="game_extention_id" name="Ex_IDG" /></label>
+          <label>Extention Name: <input type="text" id="extansion_name" name="ExName" /></label>
+    
+          <div class="form-buttons">
+            <button type="button" class="submit-button" id="addBtn">Add</button>
+            <button type="reset" class="reset-button">Reset</button>
+          </div>
+
+          <div class="form-block">
+            <h2>Delete Game</h2>
+            <form id="deleteForm" class="manage-form">
+              <label>Board Game ID to delete: <input type="text" name="DeleteID" required /></label>
+  
+              <div class="form-buttons">
+                <button type="button" class="submit-button" id="deleteBtn">Delete</button>
+                <button type="reset" class="reset-button">Reset</button>
+              </div>
+            </form>
+          </div>
+          
+        </form>
+      </div>
+
+      <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+          <p id="confirmMessage">Are you sure you want to delete this board game?</p>
+          <div class="modal-buttons">
+            <button id="confirmYes" class="confirm-button">Yes</button>
+            <button id="confirmNo" class="cancel-button">No</button>
+          </div>
+        </div>
+      </div>
+
+</body>
+</html>

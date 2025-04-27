@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Showcase</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="icon" type="image/png" href="../img/favicon.png" />
+  <script src="../main.js" defer></script>
+</head>
+
+<body class="login-page">
+
+    <nav class="top-nav">
+      <img src="../img/Designer.jpeg" alt="Goblin's Logo" class="logo" />
+
+      <div class="nav-links">
+        <button class="nav-button" id="homeButton">HOME</button>
+        <button class="nav-button" id="recoButton">RECOMMENDATIONS</button>
+        <button class="nav-button active" id="loginButton">LOGIN</button>
+
+      </div>
+
+      <div class="search-container">
+        <input type="text" placeholder="RESEARCH" class="search-bar" />
+        <i class="icon-search"></i>
+      </div>
+    </nav>
+
+    <div class="login-container">
+        <h2>Login</h2>
+        <form id="loginForm">
+          <input type="text" id="username" placeholder="Username" required />
+          <input type="password" id="password" placeholder="Password" required />
+          <button type="submit">Login</button>
+          <p id="loginMessage" class="login-message"></p>
+        </form>
+      </div>
+
+</body>
+</html>
