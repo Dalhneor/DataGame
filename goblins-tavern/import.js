@@ -1,8 +1,8 @@
 const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
+const mysql2 = require('mysql2').verbose();
 const csv = require('csv-parser');
 
-const db = new sqlite3.Database('./database/boardgames.sqlite');
+const db = new mysql2.Database('./database/boardgames.sqlite');
 
 db.serialize(() => {
   
