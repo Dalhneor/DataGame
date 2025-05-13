@@ -140,25 +140,30 @@ app.delete('/api/boardgames/:id', (req, res) => {
     `DELETE FROM BG_Expansion WHERE id_bg = ?`,
     `DELETE FROM Board_Game WHERE id_bg = ?`
   ];
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
 
-  let completed = 0;
-  let hasError = false;
+    let completed = 0;
+    let hasError = false;
 
-  queries.forEach((sql) => {
-    db.run(sql, [gameId], function (err) {
-      if (err) {
-        console.error("Error executing:", sql, "Error:", err.message);
-        hasError = true;
-      }
-
-      completed++;
-      if (completed === queries.length) {
-        if (hasError) {
-          return res.status(500).json({ error: "Error deleting some related data." });
-        } else {
-          return res.status(200).json({ message: "Board Game and all related data deleted successfully!" });
+    queries.forEach((sql) => {
+      db.run(sql, [gameId], function (err) {
+        if (err) {
+          console.error("Error executing:", sql, "Error:", err.message);
+          hasError = true;
         }
-      }
+
+        completed++;
+        if (completed === queries.length) {
+          if (hasError) {
+            db.run('ROLLBACK');
+            return res.status(500).json({ error: "Error deleting some related data." });
+          } else {
+            db.run('COMMIT');
+            return res.status(200).json({ message: "Board Game and all related data deleted successfully!" });
+          }
+        }
+      });
     });
   });
 });
@@ -179,67 +184,70 @@ app.post('/api/add', (req, res) => {
   ) {
     return res.status(400).json({ message: "Please fill in all mandatory fields." });
   }
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
 
-  const sql = `
-    INSERT OR IGNORE INTO Board_Game 
-    (id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime, minage, owned, wanting, img, users_rated, average)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+    const sql = `
+      INSERT OR IGNORE INTO Board_Game 
+      (id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime, minage, owned, wanting, img, users_rated, average)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-  db.run(sql, [bg_id, title, description, release_date, min_p, max_p, time_p, minage, owned, wanting, artwork_url, user_rating, average_rating], function (err) {
-    if (err) {
-      console.error('Error inserting Board_Game:', err.message);
-      return res.status(500).json({ error: err.message });
-    }
+    db.run(sql, [bg_id, title, description, release_date, min_p, max_p, time_p, minage, owned, wanting, artwork_url, user_rating, average_rating], function (err) {
+      if (err) {
+        console.error('Error inserting Board_Game:', err.message);
+        return res.status(500).json({ error: err.message });
+      }
 
-    const responses = [];
+      const responses = [];
 
-    const insertMultiple = (valuesString, insertTable, linkTable, nameColumn, linkNameColumn) => {
-      if (!valuesString) return;
+      const insertMultiple = (valuesString, insertTable, linkTable, nameColumn, linkNameColumn) => {
+        if (!valuesString) return;
 
-      const values = Array.isArray(valuesString) ? valuesString : valuesString.split(',').map(val => val.trim());
-      values.forEach(value => {
-        db.get(`SELECT ${nameColumn} FROM ${insertTable} WHERE ${nameColumn} = ?`, [value], (err, row) => {
-          if (err) {
-            console.error(`Error selecting from ${insertTable}:`, err.message);
-            return;
-          }
+        const values = Array.isArray(valuesString) ? valuesString : valuesString.split(',').map(val => val.trim());
+        values.forEach(value => {
+          db.get(`SELECT ${nameColumn} FROM ${insertTable} WHERE ${nameColumn} = ?`, [value], (err, row) => {
+            if (err) {
+              console.error(`Error selecting from ${insertTable}:`, err.message);
+              return;
+            }
 
-          const insertRelation = () => {
-            db.run(`INSERT INTO ${linkTable} (id_bg, ${linkNameColumn}) VALUES (?, ?)`, [bg_id, value], (err) => {
-              if (err) {
-                console.error(`Error inserting into ${linkTable}:`, err.message);
-              }
-            });
-          };
+            const insertRelation = () => {
+              db.run(`INSERT INTO ${linkTable} (id_bg, ${linkNameColumn}) VALUES (?, ?)`, [bg_id, value], (err) => {
+                if (err) {
+                  console.error(`Error inserting into ${linkTable}:`, err.message);
+                }
+              });
+            };
 
-          if (!row) {
-            db.run(`INSERT INTO ${insertTable} (${nameColumn}) VALUES (?)`, [value], (err) => {
-              if (err) {
-                console.error(`Error inserting into ${insertTable}:`, err.message);
-                return;
-              }
+            if (!row) {
+              db.run(`INSERT INTO ${insertTable} (${nameColumn}) VALUES (?)`, [value], (err) => {
+                if (err) {
+                  console.error(`Error inserting into ${insertTable}:`, err.message);
+                  return;
+                }
+                insertRelation();
+              });
+            } else {
               insertRelation();
-            });
-          } else {
-            insertRelation();
-          }
+            }
+          });
         });
-      });
-    };
+      };
 
-    insertMultiple(designer, 'BG_Designer', 'Designed_By', 'designer_name', 'designer_name');
-    insertMultiple(publisher, 'BG_Publisher', 'Published_By', 'publisher_name', 'publisher_name');
-    insertMultiple(category, 'BG_Category', 'Is_Of_Category', 'category_name', 'category_name');
-    insertMultiple(meca_g, 'BG_Mechanic', 'Uses_Mechanic', 'mechanic_name', 'mechanic_name');
+      insertMultiple(designer, 'BG_Designer', 'Designed_By', 'designer_name', 'designer_name');
+      insertMultiple(publisher, 'BG_Publisher', 'Published_By', 'publisher_name', 'publisher_name');
+      insertMultiple(category, 'BG_Category', 'Is_Of_Category', 'category_name', 'category_name');
+      insertMultiple(meca_g, 'BG_Mechanic', 'Uses_Mechanic', 'mechanic_name', 'mechanic_name');
 
-    if (game_extention_id && extansion_name) {
-      db.run(`INSERT OR IGNORE INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
-        [game_extention_id, extansion_name, bg_id]);
-      responses.push('Expansion inserted');
-    }
-
-    res.status(200).json({ message: "Board game and related data added (with multi-insertions by name)", details: responses });
+      if (game_extention_id && extansion_name) {
+        db.run(`INSERT OR IGNORE INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
+          [game_extention_id, extansion_name, bg_id]);
+        responses.push('Expansion inserted');
+      }
+      db.run('COMMIT');
+      res.status(200).json({ message: "Board game and related data added (with multi-insertions by name)", details: responses });
+    });
   });
 });
 
@@ -314,14 +322,19 @@ app.post('/api/update', (req, res) => {
       return res.status(200).json({ message: "Game and related data updated successfully!" });
     }
     const q = queries[index++];
-    db.run(q.sql, q.params, (err) => {
-      if (err) {
-        console.error(`Error executing: ${q.sql}`, err.message);
-        return res.status(500).json({ error: err.message });
-      }
-      runNext();
-    });
-  }
+    db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+      db.run(q.sql, q.params, (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error(`Error executing: ${q.sql}`, err.message);
+          return res.status(500).json({ error: err.message });
+        }
+        db.run('COMMIT');
+        });
+        runNext();
+      });
+    }
 
   runNext();
 });
