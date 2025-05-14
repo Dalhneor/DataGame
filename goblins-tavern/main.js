@@ -207,13 +207,13 @@ if (resetBtn) {
 // Top rate
 document.getElementById("topRatedBtn").addEventListener("click", async () => {
   try {
-    // Récupération des jeux les mieux notés sans changement de page
+   
     const res = await fetch("http://localhost:3000/api/top-rated");
     const results = await res.json();
 
     if (!res.ok) throw new Error(results.error || "Erreur lors du chargement des jeux");
 
-    // Affichage des résultats
+   
     displayResults(results);
   } catch (err) {
     console.error("Erreur Top Rated:", err);
