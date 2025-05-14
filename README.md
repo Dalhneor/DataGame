@@ -14,3 +14,5 @@ The aim of this project is to create a site featuring a large number of board ga
 Open a terminal and them enter:
 - cd gobelins-tavern 
 - node server.js
+
+ALTER TABLE Board_Game MODIFY yearpublished INT UNSIGNED DEFAULT NULL;
