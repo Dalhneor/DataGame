@@ -1,8 +1,8 @@
 const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
+const mysql2 = require('mysql2').verbose();
 const csv = require('csv-parser');
 
-const db = new sqlite3.Database('./database/boardgames.sqlite');
+const db = new mysql2.Database('./database/boardgames.sqlite');
 
 db.serialize(() => {
   
@@ -84,6 +84,8 @@ db.serialize(() => {
       const usersRated = parseInt(row.users_rated) || 0;
       const average = parseFloat(row.average) || 0;
 
+      db.run('BEGIN TRANSACTION');
+
       db.run(`INSERT OR IGNORE INTO Board_Game
         (id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime, minage, owned, wanting, img, users_rated, average)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -122,9 +124,85 @@ db.serialize(() => {
         const fakeIdBge = id * 1000 + i;
         db.run(`INSERT OR IGNORE INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`, [fakeIdBge, exp, id]);
       });
+
+      db.run('COMMIT');
     })
     .on('end', () => {
       console.log('Data import successfully completed');
       db.close();
     });
+     //Views
+
+  db.run(`CREATE VIEW IF NOT EXISTS Detailed_Game_Info AS
+    SELECT bg.id_bg, bg.name, bg.description, bg.yearpublished, bg.minplayers, bg.maxplayers, bg.playingtime, bg.minage, bg.owned, bg.wanting, bg.img, bg.users_rated, bg.average,
+      GROUP_CONCAT(DISTINCT c.category_name) AS categories,
+      GROUP_CONCAT(DISTINCT m.mechanic_name) AS mechanics,
+      GROUP_CONCAT(DISTINCT d.designer_name) AS designers,
+      GROUP_CONCAT(DISTINCT p.publisher_name) AS publishers
+    FROM Board_Game bg
+    LEFT JOIN Is_Of_Category c ON bg.id_bg = c.id_bg
+    LEFT JOIN Uses_Mechanic m ON bg.id_bg = m.id_bg
+    LEFT JOIN Designed_By d ON bg.id_bg = d.id_bg
+    LEFT JOIN Published_By p ON bg.id_bg = p.id_bg
+    GROUP BY bg.id_bg
+  `);
+
+  db.run(`CREATE VIEW IF NOT EXISTS Resume_Game_Info AS
+    SELECT name, yearpublished, minplayers, maxplayers, playingtime, img
+    FROM Board_Game
+    ORDER BY name
+  `);
+
+  db.run(`CREATE VIEW IF NOT EXISTS Top_Rated_Games AS
+    SELECT id_bg, name, average, users_rated, yearpublished, playingtime, minage
+    FROM Board_Game
+    WHERE users_rated > 1000
+    ORDER BY average DESC
+    LIMIT 10
+  `);
+
+  //Index
+  db.run(`CREATE INDEX IF NOT EXISTS idx_publisher_game ON Published_By(publisher_name, id_bg)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_category_game ON Is_Of_Category(category_name, id_bg)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_mechanic_name ON Uses_Mechanic(mechanic_name)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_designer_game ON Designed_By(designer_name, id_bg)`);
+
+  //Trigger with RAISE
+  db.run(`CREATE TRIGGER IF NOT EXISTS trg_prevent_duplicate_publisher
+  BEFORE INSERT ON Published_By
+  FOR EACH ROW
+  WHEN EXISTS (
+    SELECT 1 FROM Published_By
+    WHERE id_bg = NEW.id_bg AND publisher_name = NEW.publisher_name
+  )
+  BEGIN
+    SELECT RAISE(FAIL, 'Duplicate publisher entry for this game.');
+  END
+  `);
+
+  db.run(`CREATE TRIGGER IF NOT EXISTS trg_check_min_age
+  BEFORE INSERT ON Board_Game
+  FOR EACH ROW
+  WHEN NEW.minage < 0
+  BEGIN
+    SELECT RAISE(FAIL, 'Minimum age must be non-negative.');
+  END
+  `);
+
+  db.run(`CREATE TRIGGER IF NOT EXISTS trg_check_players
+  BEFORE INSERT ON Board_Game
+  FOR EACH ROW
+  WHEN NEW.minplayers > NEW.maxplayers
+  BEGIN
+    SELECT RAISE(FAIL, 'Minimum players cannot exceed maximum players.');
+  END
+  `);
+
+  db.run(`CREATE TRIGGER IF NOT EXISTS trg_delete_expansions
+  AFTER DELETE ON Board_Game
+  FOR EACH ROW
+  BEGIN
+    DELETE FROM BG_Expansion WHERE id_bg = OLD.id_bg;
+  END
+  `);
 });
