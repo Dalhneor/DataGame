@@ -6,7 +6,7 @@ const csv = require("csv-parser");
 const dbConfig = {
     host: "localhost",
     user: "root",
-    password: "admin",
+    password: "azerty12",
     database: "boardgameDB",
 };
 
@@ -30,6 +30,17 @@ function cleanString(str) {
 (async () => {
     const connection = await mysql.createConnection(dbConfig);
 
+    // Clear tables to avoid duplicate key issues
+    await connection.execute(`DELETE FROM Is_Of_Category`);
+    await connection.execute(`DELETE FROM Uses_Mechanic`);
+    await connection.execute(`DELETE FROM Designed_By`);
+    await connection.execute(`DELETE FROM Published_By`);
+    await connection.execute(`DELETE FROM BG_Category`);
+    await connection.execute(`DELETE FROM BG_Mechanic`);
+    await connection.execute(`DELETE FROM BG_Designer`);
+    await connection.execute(`DELETE FROM BG_Publisher`);
+    await connection.execute(`DELETE FROM Board_Game`);
+
     const results = [];
 
     fs.createReadStream("boardgameDB.csv")
@@ -40,7 +51,9 @@ function cleanString(str) {
                 const id = parseInt(row.id);
                 const name = cleanString(row.primary);
                 const description = cleanString(row.description);
-                const year = parseInt(row.yearpublished);
+                let year = parseInt(row.yearpublished);
+                if (isNaN(year) || year < 1800 || year > 2100) year = null;
+
                 const minplayers = parseInt(row.minplayers);
                 const maxplayers = parseInt(row.maxplayers);
                 const time = parseInt(row.playingtime);

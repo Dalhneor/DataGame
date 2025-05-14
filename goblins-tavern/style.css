@@ -439,6 +439,29 @@ body.reco-page {
 }
 
 
+#topRatedBtn {
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  background-color: #444; 
+  color: white;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin-top: 10px;  
+  margin-bottom: 20px;  
+}
+
+#topRatedBtn:hover {
+  background-color: #e7ab1f;  
+}
+
+
+#topRatedBtn:hover {
+  transform: scale(1.05);
+}
+
+
 .image-box img {
   max-width: 400px;
   height: auto;
@@ -782,4 +805,4 @@ nav a:hover::after {
     background-color: rgba(255, 255, 255, 0.2);
   }
 
- 
+

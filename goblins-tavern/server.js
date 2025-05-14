@@ -1,344 +1,377 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2/promise');
 const path = require('path');
 const cors = require('cors');
 
-const app = express();
-const db = new sqlite3.Database('./database/boardgames.sqlite');
 const PORT = 3000;
 
-app.use(cors());
-app.use(express.static('HTML'));
-app.use(express.json());
-
-app.get('/api/boardgames', (req, res) => {
-  const query = `
-    SELECT 
-      bg.*
-    FROM Board_Game bg
-    LIMIT 100
-  `;
-
-  db.all(query, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+(async () => {
+  const db = await mysql.createPool({
+    host: "localhost",
+    user: "root",
+    password: "azerty12",
+    database: "boardgameDB",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
   });
-});
 
-app.post('/api/game-details', (req, res) => {
-  const { id_bg } = req.body;
+  const app = express();
+  app.use(cors());
+  app.use(express.static('HTML'));
+  app.use(express.json());
 
-  if (!id_bg) {
-    return res.status(400).json({ error: "id_bg is required" });
+  const [sqlModeResult] = await db.query('SELECT @@sql_mode');
+  console.log('Current SQL Mode:', sqlModeResult[0]['@@sql_mode']);
+
+  if (sqlModeResult[0]['@@sql_mode'].includes('ONLY_FULL_GROUP_BY')) {
+    await db.query("SET SESSION sql_mode = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '')");
+    console.log('Modified SQL Mode to remove ONLY_FULL_GROUP_BY');
   }
 
-  const query = `
-    SELECT 
-      bg.*,
-      d.name AS designer_name,
-      p.name AS publisher_name,
-      m.name AS mechanic_name,
-      bgc.name AS bg_category_name,
-      bge.id_bge AS bgext_id,
-      bge.name AS expansion_name
-    FROM Board_Game bg
-    LEFT JOIN Designed_By AS db ON bg.id_bg = db.id_bg
-    LEFT JOIN BG_Designer AS d ON db.designer_name = d.name
-    LEFT JOIN Published_By AS pb ON bg.id_bg = pb.id_bg
-    LEFT JOIN BG_Publisher AS p ON pb.publisher_name = p.name
-    LEFT JOIN Uses_Mechanic AS um ON bg.id_bg = um.id_bg
-    LEFT JOIN BG_Mechanic AS m ON um.mechanic_name = m.name
-    LEFT JOIN Is_Of_Category AS cat ON bg.id_bg = cat.id_bg
-    LEFT JOIN BG_Category AS bgc ON cat.category_name = bgc.name
-    LEFT JOIN BG_Expansion AS bge ON bg.id_bg = bge.id_bg
-    WHERE bg.id_bg = ?
-    GROUP BY bg.id_bg
-  `;
-
-  db.get(query, [id_bg], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(404).json({ error: "Board game not found" });
-
-    res.json(row);
-  });
-});
-
-app.post('/api/search', (req, res) => {
-  const { year, minPlayers, maxPlayers, playtime, keywords } = req.body;
-
-  let query = `SELECT * FROM Board_Game WHERE 1=1`;
-  const params = [];
-
-  if (year) {
-    if (year === "one") query += ` AND yearpublished < 2000`;
-    if (year === "two") query += ` AND yearpublished BETWEEN 2000 AND 2010`;
-    if (year === "three") query += ` AND yearpublished BETWEEN 2010 AND 2020`;
-    if (year === "four") query += ` AND yearpublished >= 2020`;
-  }
-
-  if (minPlayers) {
-    if (minPlayers === "one") query += ` AND minplayers = 1`;
-    if (minPlayers === "two") query += ` AND minplayers <= 2`;
-    if (minPlayers === "three") query += ` AND minplayers <= 4`;
-    if (minPlayers === "four") query += ` AND minplayers <= 6`;
-  }
-
-  if (maxPlayers) {
-    if (maxPlayers === "one") query += ` AND maxplayers <= 2`;
-    if (maxPlayers === "two") query += ` AND maxplayers <= 4`;
-    if (maxPlayers === "three") query += ` AND maxplayers <= 6`;
-    if (maxPlayers === "four") query += ` AND maxplayers <= 8`;
-    if (maxPlayers === "five") query += ` AND maxplayers <= 12`;
-  }
-
-  if (playtime) {
-    if (playtime === "one") query += ` AND playingtime <= 20`;
-    if (playtime === "two") query += ` AND playingtime <= 60`;
-    if (playtime === "three") query += ` AND playingtime > 60`;
-    if (playtime === "four") query += ` AND playingtime > 120`;
-    if (playtime === "five") query += ` AND playingtime > 180`;
-  }
-
-  if (keywords && keywords.length > 0) {
-    keywords.forEach(kw => {
-      query += ` AND (name LIKE ? OR description LIKE ?)`;
-      params.push(`%${kw}%`, `%${kw}%`);
-    });
-  }
-
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-app.get('/api/deletebg/:id', (req, res) => {
-  const gameId = req.params.id;
-
-  const sql = `SELECT id_bg, name FROM Board_Game WHERE id_bg = ?`;
-
-  db.get(sql, [gameId], (err, row) => {
-    if (err) {
-      console.error("Error fetching board game:", err.message);
-      return res.status(500).json({ error: err.message });
+  // Routes
+  app.get('/api/boardgames', async (req, res) => {
+    try {
+      const [rows] = await db.query(`SELECT * FROM Board_Game LIMIT 100`);
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-    if (!row) {
-      return res.status(404).json({ error: "Board Game not found." });
+  });
+
+  app.post('/api/game-details', async (req, res) => {
+    const { id_bg } = req.body;
+    if (!id_bg) return res.status(400).json({ error: "id_bg is required" });
+
+    const query = `
+      SELECT 
+        bg.*,
+        d.name AS designer_name,
+        p.name AS publisher_name,
+        m.name AS mechanic_name,
+        bgc.name AS bg_category_name,
+        bge.id_bge AS bgext_id,
+        bge.name AS expansion_name
+      FROM Board_Game bg
+      LEFT JOIN Designed_By db ON bg.id_bg = db.id_bg
+      LEFT JOIN BG_Designer d ON db.designer_name = d.name
+      LEFT JOIN Published_By pb ON bg.id_bg = pb.id_bg
+      LEFT JOIN BG_Publisher p ON pb.publisher_name = p.name
+      LEFT JOIN Uses_Mechanic um ON bg.id_bg = um.id_bg
+      LEFT JOIN BG_Mechanic m ON um.mechanic_name = m.name
+      LEFT JOIN Is_Of_Category cat ON bg.id_bg = cat.id_bg
+      LEFT JOIN BG_Category bgc ON cat.category_name = bgc.name
+      LEFT JOIN BG_Expansion bge ON bg.id_bg = bge.id_bg
+      WHERE bg.id_bg = ?
+      GROUP BY bg.id_bg
+    `;
+
+    try {
+      const [rows] = await db.query(query, [id_bg]);
+      if (rows.length === 0) return res.status(404).json({ error: "Board game not found" });
+      res.json(rows[0]);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-    res.json(row);
   });
+
+  app.post('/api/search', async (req, res) => {
+    const { year, minPlayers, maxPlayers, playtime, keywords } = req.body;
+    let query = `SELECT * FROM Board_Game WHERE 1=1`;
+    const params = [];
+
+    if (year) {
+      if (year === "one") query += ` AND yearpublished < 2000`;
+      if (year === "two") query += ` AND yearpublished BETWEEN 2000 AND 2010`;
+      if (year === "three") query += ` AND yearpublished BETWEEN 2010 AND 2020`;
+      if (year === "four") query += ` AND yearpublished >= 2020`;
+    }
+
+    if (minPlayers) {
+      if (minPlayers === "one") query += ` AND minplayers = 1`;
+      if (minPlayers === "two") query += ` AND minplayers <= 2`;
+      if (minPlayers === "three") query += ` AND minplayers <= 4`;
+      if (minPlayers === "four") query += ` AND minplayers <= 6`;
+    }
+
+    if (maxPlayers) {
+      if (maxPlayers === "one") query += ` AND maxplayers <= 2`;
+      if (maxPlayers === "two") query += ` AND maxplayers <= 4`;
+      if (maxPlayers === "three") query += ` AND maxplayers <= 6`;
+      if (maxPlayers === "four") query += ` AND maxplayers <= 8`;
+      if (maxPlayers === "five") query += ` AND maxplayers <= 12`;
+    }
+
+    if (playtime) {
+      if (playtime === "one") query += ` AND playingtime <= 20`;
+      if (playtime === "two") query += ` AND playingtime <= 60`;
+      if (playtime === "three") query += ` AND playingtime > 60`;
+      if (playtime === "four") query += ` AND playingtime > 120`;
+      if (playtime === "five") query += ` AND playingtime > 180`;
+    }
+
+    if (keywords && keywords.length > 0) {
+  keywords.forEach(keyword => {
+    query += ` AND (name LIKE ? OR description LIKE ?)`;
+    params.push(`%${keyword}%`, `%${keyword}%`);
+  });
+}
+
+
+    try {
+      const [rows] = await db.query(query, params);
+      res.json(rows);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/game/:id', async (req, res) => {
+  const gameId = parseInt(req.params.id, 10);
+
+  if (isNaN(gameId)) {
+    return res.status(400).json({ error: 'Invalid game ID' });
+  }
+
+  try {
+    const [results] = await db.query(`CALL GetBoardGameDetails(?)`, [gameId]);
+
+    // results = [
+    //   [0] -> Board_Game,
+    //   [1] -> Categories,
+    //   [2] -> Mechanics,
+    //   [3] -> Designers,
+    //   [4] -> Publishers
+    // ]
+
+    const gameDetails = {
+      info: results[0][0] || null, // Unique game
+      categories: results[1].map(row => row.category_name),
+      mechanics: results[2].map(row => row.mechanic_name),
+      designers: results[3].map(row => row.designer_name),
+      publishers: results[4].map(row => row.publisher_name)
+    };
+
+    res.json(gameDetails);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.delete('/api/boardgames/:id', (req, res) => {
-  const gameId = req.params.id;
+app.post('/api/search/category', async (req, res) => {
+  const { category } = req.body;
 
-  const queries = [
-    `DELETE FROM Designed_By WHERE id_bg = ?`,
-    `DELETE FROM Published_By WHERE id_bg = ?`,
-    `DELETE FROM Is_Of_Category WHERE id_bg = ?`,
-    `DELETE FROM Uses_Mechanic WHERE id_bg = ?`,
-    `DELETE FROM BG_Expansion WHERE id_bg = ?`,
-    `DELETE FROM Board_Game WHERE id_bg = ?`
-  ];
-  db.serialize(() => {
-    db.run('BEGIN TRANSACTION');
+  if (!category) {
+    return res.status(400).json({ error: 'Category is required' });
+  }
 
-    let completed = 0;
-    let hasError = false;
+  try {
+    const [results] = await db.query(`CALL GetGamesByCategory(?)`, [category]);
 
-    queries.forEach((sql) => {
-      db.run(sql, [gameId], function (err) {
-        if (err) {
-          console.error("Error executing:", sql, "Error:", err.message);
-          hasError = true;
-        }
-
-        completed++;
-        if (completed === queries.length) {
-          if (hasError) {
-            db.run('ROLLBACK');
-            return res.status(500).json({ error: "Error deleting some related data." });
-          } else {
-            db.run('COMMIT');
-            return res.status(200).json({ message: "Board Game and all related data deleted successfully!" });
-          }
-        }
-      });
-    });
-  });
+    
+    res.json(results[0]); 
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/add', (req, res) => {
+app.post('/api/search/designer', async (req, res) => {
+  const { designer } = req.body;
+
+  try {
+    const [results] = await db.query(`CALL GetGamesByDesigner(?)`, [designer]); 
+
+    res.json(results[0]); 
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/top-rated', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM Top_Rated_Games');
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur lors de la récupération des jeux les mieux notés :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+
+
+  app.get('/api/deletebg/:id', async (req, res) => {
+    const gameId = req.params.id;
+    try {
+      const [rows] = await db.query(`SELECT id_bg, name FROM Board_Game WHERE id_bg = ?`, [gameId]);
+      if (rows.length === 0) return res.status(404).json({ error: "Board Game not found." });
+      res.json(rows[0]);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/boardgames/:id', async (req, res) => {
+    const gameId = req.params.id;
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      const deletions = [
+        `DELETE FROM Designed_By WHERE id_bg = ?`,
+        `DELETE FROM Published_By WHERE id_bg = ?`,
+        `DELETE FROM Is_Of_Category WHERE id_bg = ?`,
+        `DELETE FROM Uses_Mechanic WHERE id_bg = ?`,
+        `DELETE FROM BG_Expansion WHERE id_bg = ?`,
+        `DELETE FROM Board_Game WHERE id_bg = ?`
+      ];
+      for (const query of deletions) {
+        await conn.query(query, [gameId]);
+      }
+      await conn.commit();
+      res.status(200).json({ message: "Board Game and all related data deleted successfully!" });
+    } catch (err) {
+      await conn.rollback();
+      res.status(500).json({ error: "Error deleting data: " + err.message });
+    } finally {
+      conn.release();
+    }
+  });
+
+app.post('/api/update', async (req, res) => {
+  const {
+    id_bg, name, description, yearpublished, min_p, max_p, time_p,
+    minage, owned, designer, wanting, artwork_url, publisher, category,
+    meca_g, user_rating, average_rating
+  } = req.body;
+
+  if (!id_bg || !name || !description || !yearpublished) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const updateBoardGameQuery = `
+      UPDATE Board_Game
+      SET 
+        name = ?, description = ?, yearpublished = ?, minplayers = ?, maxplayers = ?, 
+        playingtime = ?, minage = ?, owned = ?, wanting = ?, 
+        img = ?, users_rated = ?, average = ?
+      WHERE id_bg = ?
+    `;
+    const boardGameParams = [
+      name, description, yearpublished, min_p, max_p, time_p,
+      minage, owned, wanting, artwork_url, user_rating, average_rating, id_bg
+    ];
+    await db.query(updateBoardGameQuery, boardGameParams);
+    await db.query(`DELETE FROM Designed_By WHERE id_bg = ?`, [id_bg]);
+    if (designer && designer.trim()) {
+      await db.query(`INSERT INTO Designed_By (id_bg, designer_name) VALUES (?, ?)`, [id_bg, designer]);
+    }
+    await db.query(`DELETE FROM Published_By WHERE id_bg = ?`, [id_bg]);
+    if (publisher && publisher.trim()) {
+      await db.query(`INSERT INTO Published_By (id_bg, publisher_name) VALUES (?, ?)`, [id_bg, publisher]);
+    }
+    await db.query(`DELETE FROM Is_Of_Category WHERE id_bg = ?`, [id_bg]);
+    if (category && category.trim()) {
+      await db.query(`INSERT INTO Is_Of_Category (id_bg, category_name) VALUES (?, ?)`, [id_bg, category]);
+    }
+    await db.query(`DELETE FROM Uses_Mechanic WHERE id_bg = ?`, [id_bg]);
+    if (meca_g && meca_g.trim()) {
+      await db.query(`INSERT INTO Uses_Mechanic (id_bg, mechanic_name) VALUES (?, ?)`, [id_bg, meca_g]);
+    }
+
+    res.json({ message: "Game updated successfully!" });
+
+  } catch (err) {
+    console.error("Update failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/add', async (req, res) => {
   const {
     bg_id, title, description, release_date,
     min_p, max_p, time_p, minage,
-    owned, designer, wanting, artwork_url,
-    publisher, category, meca_g,
-    user_rating, average_rating,
-    game_extention_id, extansion_name
+    owned = 0, designer = [], wanting = 0, artwork_url = null,
+    publisher = [], category = [], meca_g = [],
+    user_rating = 0, average_rating = 0,
+    game_extention_id = null, extansion_name = null
   } = req.body;
 
+ const mandatoryFields = [
+  "bg_id", "title", "description", "release_date",
+  "min_p", "max_p", "time_p", "minage",
+  "owned", "designer", "wanting", "publisher",
+  "category", "meca_g"
+];
+
+for (const field of mandatoryFields) {
   if (
-    !bg_id || !title || !description || !release_date ||
-    min_p == null || max_p == null || time_p == null || minage == null
+    req.body[field] === undefined ||
+    req.body[field] === null ||
+    (typeof req.body[field] === "string" && req.body[field].trim() === "")
   ) {
-    return res.status(400).json({ message: "Please fill in all mandatory fields." });
+    return res.status(400).json({ message: `Field '${field}' is required.` });
   }
-  db.serialize(() => {
-    db.run('BEGIN TRANSACTION');
+}
 
-    const sql = `
-      INSERT OR IGNORE INTO Board_Game 
-      (id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime, minage, owned, wanting, img, users_rated, average)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
 
-    db.run(sql, [bg_id, title, description, release_date, min_p, max_p, time_p, minage, owned, wanting, artwork_url, user_rating, average_rating], function (err) {
-      if (err) {
-        console.error('Error inserting Board_Game:', err.message);
-        return res.status(500).json({ error: err.message });
+  const conn = await db.getConnection();
+
+  try {
+    await conn.beginTransaction();
+
+
+    const designerName = Array.isArray(designer) && designer.length > 0 ? designer[0] : null;
+    const publisherName = Array.isArray(publisher) && publisher.length > 0 ? publisher[0] : null;
+    const categoryName = Array.isArray(category) && category.length > 0 ? category[0] : null;
+    const mechanicName = Array.isArray(meca_g) && meca_g.length > 0 ? meca_g[0] : null;
+
+
+    const refInsert = async (table, name) => {
+      if (name) {
+        await conn.query(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
       }
+    };
 
-      const responses = [];
 
-      const insertMultiple = (valuesString, insertTable, linkTable, nameColumn, linkNameColumn) => {
-        if (!valuesString) return;
+    if (designerName) await refInsert('BG_Designer', designerName);
+    if (publisherName) await refInsert('BG_Publisher', publisherName);
+    if (categoryName) await refInsert('BG_Category', categoryName);
+    if (mechanicName) await refInsert('BG_Mechanic', mechanicName);
 
-        const values = Array.isArray(valuesString) ? valuesString : valuesString.split(',').map(val => val.trim());
-        values.forEach(value => {
-          db.get(`SELECT ${nameColumn} FROM ${insertTable} WHERE ${nameColumn} = ?`, [value], (err, row) => {
-            if (err) {
-              console.error(`Error selecting from ${insertTable}:`, err.message);
-              return;
-            }
 
-            const insertRelation = () => {
-              db.run(`INSERT INTO ${linkTable} (id_bg, ${linkNameColumn}) VALUES (?, ?)`, [bg_id, value], (err) => {
-                if (err) {
-                  console.error(`Error inserting into ${linkTable}:`, err.message);
-                }
-              });
-            };
+    const callProcedureSQL = `CALL AddBoardGameFull(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-            if (!row) {
-              db.run(`INSERT INTO ${insertTable} (${nameColumn}) VALUES (?)`, [value], (err) => {
-                if (err) {
-                  console.error(`Error inserting into ${insertTable}:`, err.message);
-                  return;
-                }
-                insertRelation();
-              });
-            } else {
-              insertRelation();
-            }
-          });
-        });
-      };
+    await conn.query(callProcedureSQL, [
+      bg_id, title, description, release_date,
+      min_p, max_p, time_p, minage,
+      owned, wanting, artwork_url,
+      user_rating, average_rating,
+      designerName, publisherName, categoryName, mechanicName
+    ]);
 
-      insertMultiple(designer, 'BG_Designer', 'Designed_By', 'designer_name', 'designer_name');
-      insertMultiple(publisher, 'BG_Publisher', 'Published_By', 'publisher_name', 'publisher_name');
-      insertMultiple(category, 'BG_Category', 'Is_Of_Category', 'category_name', 'category_name');
-      insertMultiple(meca_g, 'BG_Mechanic', 'Uses_Mechanic', 'mechanic_name', 'mechanic_name');
-
-      if (game_extention_id && extansion_name) {
-        db.run(`INSERT OR IGNORE INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
-          [game_extention_id, extansion_name, bg_id]);
-        responses.push('Expansion inserted');
-      }
-      db.run('COMMIT');
-      res.status(200).json({ message: "Board game and related data added (with multi-insertions by name)", details: responses });
-    });
-  });
-});
-
-app.post('/api/update', (req, res) => {
-  const {
-    id_bg, title, description, release_date,
-    min_p, max_p, time_p, minage,
-    owned, wanting, artwork_url,
-    designer, publisher, category, meca_g,
-    user_rating, average_rating,
-    game_extention_id, extansion_name
-  } = req.body;
-
-  if (!id_bg) {
-    return res.status(400).json({ error: "Board Game ID is required." });
-  }
-
-  const queries = [];
-
-  queries.push({
-    sql: `UPDATE Board_Game SET name=?, description=?, yearpublished=?, minplayers=?, maxplayers=?, playingtime=?, minage=?, owned=?, wanting=?, img=?, users_rated=?, average=? WHERE id_bg=?`,
-    params: [title, description, release_date, min_p, max_p, time_p, minage, owned, wanting, artwork_url, user_rating, average_rating, id_bg]
-  });
-
-  queries.push({ sql: `DELETE FROM Designed_By WHERE id_bg=?`, params: [id_bg] });
-  queries.push({ sql: `DELETE FROM Published_By WHERE id_bg=?`, params: [id_bg] });
-  queries.push({ sql: `DELETE FROM Is_Of_Category WHERE id_bg=?`, params: [id_bg] });
-  queries.push({ sql: `DELETE FROM Uses_Mechanic WHERE id_bg=?`, params: [id_bg] });
-
-  if (designer) {
-    const designers = designer.split(";").map(d => d.trim());
-    designers.forEach(d => {
-      queries.push({ sql: `INSERT OR IGNORE INTO BG_Designer (name) VALUES (?)`, params: [d] });
-      queries.push({ sql: `INSERT INTO Designed_By (id_bg, designer_name) VALUES (?, ?)`, params: [id_bg, d] });
-    });
-  }
-
-  if (publisher) {
-    const publishers = publisher.split(";").map(p => p.trim());
-    publishers.forEach(p => {
-      queries.push({ sql: `INSERT OR IGNORE INTO BG_Publisher (name) VALUES (?)`, params: [p] });
-      queries.push({ sql: `INSERT INTO Published_By (id_bg, publisher_name) VALUES (?, ?)`, params: [id_bg, p] });
-    });
-  }
-
-  if (category) {
-    const categories = category.split(";").map(c => c.trim());
-    categories.forEach(c => {
-      queries.push({ sql: `INSERT OR IGNORE INTO BG_Category (name) VALUES (?)`, params: [c] });
-      queries.push({ sql: `INSERT INTO Is_Of_Category (id_bg, category_name) VALUES (?, ?)`, params: [id_bg, c] });
-    });
-  }
-
-  if (meca_g) {
-    const mechanics = meca_g.split(";").map(m => m.trim());
-    mechanics.forEach(m => {
-      queries.push({ sql: `INSERT OR IGNORE INTO BG_Mechanic (name) VALUES (?)`, params: [m] });
-      queries.push({ sql: `INSERT INTO Uses_Mechanic (id_bg, mechanic_name) VALUES (?, ?)`, params: [id_bg, m] });
-    });
-  }
-
-  if (game_extention_id && extansion_name) {
-    queries.push({
-      sql: `INSERT OR REPLACE INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
-      params: [game_extention_id, extansion_name, id_bg]
-    });
-  }
-
-  let index = 0;
-  function runNext() {
-    if (index >= queries.length) {
-      return res.status(200).json({ message: "Game and related data updated successfully!" });
-    }
-    const q = queries[index++];
-    db.serialize(() => {
-    db.run('BEGIN TRANSACTION');
-      db.run(q.sql, q.params, (err) => {
-        if (err) {
-          db.run('ROLLBACK');
-          console.error(`Error executing: ${q.sql}`, err.message);
-          return res.status(500).json({ error: err.message });
-        }
-        db.run('COMMIT');
-        });
-        runNext();
-      });
+    if (game_extention_id && extansion_name) {
+      await conn.query(
+        `INSERT INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
+        [game_extention_id, extansion_name, bg_id]
+      );
     }
 
-  runNext();
+    await conn.commit();
+    res.status(200).json({ message: "Game added via procedure successfully." });
+
+  } catch (err) {
+    await conn.rollback();
+    console.error("DB error:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server ready at http://localhost:${PORT}`);
-});
+  app.listen(PORT, () => {
+    console.log(`Server ready at http://localhost:${PORT}`);
+  });
+})();

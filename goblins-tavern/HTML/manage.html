@@ -32,32 +32,30 @@
       <div class="manage-wrapper">
         <h2>Enter Game Information</h2>
         <form id="manageForm" class="manage-form">
-          <label>Board Game ID <span class="required">*</span> : <input type="text" name="BD_ID" required /></label>
-          <label>Title <span class="required">*</span> : <input type="text" name="Title" required /></label>
-          <label>Description <span class="required">*</span> : <textarea name="Description" required></textarea></label>
-          <label>Release Year <span class="required">*</span> : <input type="text" name="ReleaseDate" required /></label>
-          <label>Minimum Player <span class="required">*</span> : <input type="text" name="MinP" required /></label>
-          <label>Maximum Players <span class="required">*</span> : <input type="text" name="MaxP" required /></label>
-          <label>Average Playing Time <span class="required">*</span> : <input type="text" name="TimeP" required /></label>
-          <label>Minimum age <span class="required">*</span> : <input type="text" name="Minage" required /></label>
+          <label>Board Game ID <span class="required">*</span>: <input type="text" id="bg_id" name="id_bg" required /></label>
+          <label>Title <span class="required">*</span>: <input type="text" id="title" name="name" required /></label>
+          <label>Description <span class="required">*</span>: <textarea id="description" name="description" required></textarea></label>
+          <label>Release Year <span class="required">*</span>: <input type="text" id="release_date" name="yearpublished" required /></label>
+          <label>Minimum Player <span class="required">*</span>: <input type="text" id="min_p" name="minplayers" required /></label>
+          <label>Maximum Players <span class="required">*</span>: <input type="text" id="max_p" name="maxplayers" required /></label>
+          <label>Average Playing Time <span class="required">*</span>: <input type="text" id="time_p" name="playingtime" required /></label>
+          <label>Minimum age <span class="required">*</span>: <input type="text" id="minage" name="minage" required /></label>
 
-          <label>Owned: <input type="text" id="owned" name="Owned" /></label>
-          <label>Designer: <input type="text" id="designer" name="Designer" /></label>
-          <label>Wanting: <input type="text" id="wanting" name="Wanting" /></label>
-          <label>Artwork URL: <input type="text" id="artwork_url" name="ArtworkUrl" /></label>
-          <label>Publishers: <input type="text" id="publisher" name="Publisher" /></label>
-          <label>Categories: <input type="text" id="category" name="Category" /></label>
-          <label>Mechanics: <input type="text" id="meca_g" name="MecaG" /></label>
-          <label>Rating ID: <input type="text" id="rating_id" name="IDR" /></label>
-          <label>User Rating: <input type="text" id="user_rating" name="UserR" /></label>
-          <label>Average Rating: <input type="text" id="average_rating" name="AvgR" /></label>
-          <label>Game Extention ID: <input type="text" id="game_extention_id" name="Ex_IDG" /></label>
-          <label>Extention Name: <input type="text" id="extansion_name" name="ExName" /></label>
-    
-          <div class="form-buttons">
-            <button type="button" class="submit-button" id="addBtn">Add</button>
-            <button type="reset" class="reset-button">Reset</button>
-          </div>
+          <label>Owned: <input type="text" id="owned" name="owned" /></label>
+          <label>Wanting: <input type="text" id="wanting" name="wanting" /></label>
+          <label>Artwork URL: <input type="text" id="artwork_url" name="img" /></label>
+          <label>Designer: <input type="text" id="designer" name="designer_name" /></label>
+          <label>Publisher: <input type="text" id="publisher" name="publisher_name" /></label>
+          <label>Category: <input type="text" id="category" name="category_name" /></label>
+          <label>Mechanics: <input type="text" id="meca_g" name="mechanic_name" /></label>
+          <label>User Rating: <input type="text" id="user_rating" name="users_rated" /></label>
+          <label>Average Rating: <input type="text" id="average_rating" name="average" /></label>
+
+
+  <div class="form-buttons">
+    <button type="button" class="submit-button" id="addBtn">Add</button>
+    <button type="reset" class="reset-button">Reset</button>
+  </div>
 
           <div class="form-block">
             <h2>Delete Game</h2>

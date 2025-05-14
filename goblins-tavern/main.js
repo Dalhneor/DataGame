@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // Navigation Buttons
   const homeBtn = document.getElementById("homeButton");
   const recoBtn = document.getElementById("recoButton");
   const loginBtn = document.getElementById("loginButton");
@@ -10,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const superGame = document.getElementById("super-games");
 
   if (homeBtn) homeBtn.addEventListener("click", () => window.location.href = "home.html");
-  if (recoBtn) recoBtn.addEventListener("click", () => window.location.href = "recommandations.html"); 
+  if (recoBtn) recoBtn.addEventListener("click", () => window.location.href = "recommandations.html");
   if (loginBtn) loginBtn.addEventListener("click", () => window.location.href = "login.html");
   if (logoutBtn) logoutBtn.addEventListener("click", () => window.location.href = "home.html");
   if (manageBtn) manageBtn.addEventListener("click", () => window.location.href = "manage.html");
@@ -20,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     discoverBtn.addEventListener("click", () => gameSection.scrollIntoView({ behavior: "smooth" }));
   }
 
-  // admin login
+  // Admin login
   const form = document.getElementById("loginForm");
   const loginMessage = document.getElementById("loginMessage");
 
@@ -40,181 +41,228 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // game search
-  const searchBtn = document.getElementById("searchBtn");
-  const resultsContainer = document.getElementById("resultsContainer");
-  const searchForm = document.getElementById("categoryForm");
-  const resetBtn = document.getElementById("resetBtn");
+// Game Search
+const searchBtn = document.getElementById("searchBtn");
+const resultsContainer = document.getElementById("resultsContainer");
+const searchForm = document.getElementById("categoryForm");
+const resetBtn = document.getElementById("resetBtn");
 
-  let sidePanel = document.createElement("div");
-  sidePanel.id = "side-panel";
-  sidePanel.style.position = "fixed";
-  sidePanel.style.top = "0";
-  sidePanel.style.right = "0";
-  sidePanel.style.width = "400px";
-  sidePanel.style.height = "100%";
-  sidePanel.style.background = "#222";
-  sidePanel.style.color = "white";
-  sidePanel.style.padding = "20px";
-  sidePanel.style.overflowY = "auto";
-  sidePanel.style.boxShadow = "0 0 10px rgba(0,0,0,0.5)";
-  sidePanel.style.display = "none";
-  sidePanel.style.zIndex = "1000";
-  sidePanel.style.transition = "transform 0.3s ease, opacity 0.3s ease";
-  sidePanel.style.transform = "translateX(100%)";
-  sidePanel.style.opacity = "0";
+let sidePanel = document.createElement("div");
+sidePanel.id = "side-panel";
+Object.assign(sidePanel.style, {
+  position: "fixed",
+  top: "0",
+  right: "0",
+  width: "400px",
+  height: "100%",
+  background: "#222",
+  color: "white",
+  padding: "20px",
+  overflowY: "auto",
+  boxShadow: "0 0 10px rgba(0,0,0,0.5)",
+  display: "none",
+  zIndex: "1000",
+  transition: "transform 0.3s ease, opacity 0.3s ease",
+  transform: "translateX(100%)",
+  opacity: "0"
+});
+document.body.appendChild(sidePanel);
 
-  document.body.appendChild(sidePanel);
+if (searchBtn) {
+  searchBtn.addEventListener("click", async () => {
+    const year = document.getElementById("pref1").value;
+    const minPlayers = document.getElementById("pref2").value;
+    const playtime = document.getElementById("pref3").value;
+    const maxPlayers = document.getElementById("pref4").value;
 
-  if (searchBtn) {
-    searchBtn.addEventListener("click", async () => {
-      const year = document.getElementById("pref1").value;
-      const minPlayers = document.getElementById("pref2").value;
-      const playtime = document.getElementById("pref3").value;
-      const maxPlayers = document.getElementById("pref4").value;
+    const name = document.getElementById("keywords1").value.trim();
+    const mechanic = document.getElementById("keywords3").value.trim();
+    const category = document.getElementById("keywords4").value.trim();
+    const designer = document.getElementById("keywords5").value.trim();
 
-      const keywords = [];
-      const kw1 = document.getElementById("keywords1");
-      const kw3 = document.getElementById("keywords3");
-      if (kw1 && kw1.value.trim() !== "") keywords.push(kw1.value.trim());
-      if (kw3 && kw3.value.trim() !== "") keywords.push(kw3.value.trim());
-
-      const searchData = { year, minPlayers, maxPlayers, playtime, keywords };
-
+    // 🔍 Si seulement designer est rempli (recherche spéciale)
+    if (designer && !year && !minPlayers && !playtime && !maxPlayers && !name && !mechanic && !category) {
       try {
-        const response = await fetch("http://localhost:3000/api/search", {
+        const res = await fetch("http://localhost:3000/api/search/designer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(searchData)
+          body: JSON.stringify({ designer })
         });
 
-        const results = await response.json();
+        const results = await res.json();
+        if (!res.ok) throw new Error(results.error || "Recherche échouée");
 
-        if (response.ok && resultsContainer) {
-          resultsContainer.innerHTML = "";
-
-          if (results.length > 0) {
-            results.forEach(game => {
-              const card = document.createElement("div");
-              card.classList.add("game-card");
-
-              const imageUrl = game.img && game.img.startsWith("http")
-                ? game.img
-                : "../img/placeholder.jpg";
-
-              card.innerHTML = `
-                <img src="${imageUrl}" alt="${game.name}" class="game-image">
-                <div class="game-info">
-                  <h3>${game.name}</h3>
-                  <p><strong>Published:</strong> ${game.yearpublished || "?"}</p>
-                  <p><strong>Players:</strong> ${game.minplayers} – ${game.maxplayers}</p>
-                  <p><strong>Time:</strong> ${game.playingtime} min</p>
-                </div>
-              `;
-
-              card.addEventListener("click", async () => {
-                console.log(game);
-
-                try {
-                  const response_detail = await fetch("http://localhost:3000/api/game-details", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id_bg: game.id_bg })
-                  });
-              
-                  const details = await response_detail.json();
-              
-                  if (!response_detail.ok) {  // UPDATED: correct check here (response_detail, not response)
-                    throw new Error(details.error || "Failed to fetch game details");
-                  }
-
-                  sidePanel.innerHTML = `
-                    <button id="closePanel" style="position:absolute;top:10px;right:10px;background:#444;color:white;border:none;border-radius:50%;width:35px;height:35px;font-size:18px;cursor:pointer;">✕</button>
-                    <h2 style="margin-top:50px;">${game.name}</h2>
-                    <img src="${imageUrl}" alt="${game.name}" style="width: 100%; margin-bottom: 10px;">
-                    <p><strong>Description:</strong> ${game.description || "No description available."}</p>
-                    <p><strong>Board Game ID:</strong> ${game.id_bg}</p>
-                    <p><strong>Players:</strong> ${game.minplayers} – ${game.maxplayers}</p>
-                    <p><strong>Minimum Age:</strong> ${game.minage || "?"} years</p>
-                    <p><strong>Publisher:</strong> ${details.publisher_name || "Unknown"}</p>
-                    <p><strong>Designer:</strong> ${details.designer_name || "Unknown"}</p>
-                    <p><strong>Owned:</strong> ${game.owned || 0}</p>
-                    <p><strong>Wanted:</strong> ${game.wanting || 0}</p>
-                    <p><strong>Mechanic:</strong> ${details.mechanic_name || "Unknown"}</p>
-                    <p><strong>Category:</strong> ${details.bg_category_name || "Unknown"}</p>
-                    <p><strong>Average Rating:</strong> ${game.average || "?"}</p>
-                    <p><strong>Number of Users that Rated:</strong> ${game.users_rated || "?"}</p>
-                    <p><strong>Game Expansion:</strong> ${details.expansion_name || "?"}</p><br>
-                  `;
-
-                  sidePanel.style.display = "block";
-                  setTimeout(() => {
-                    sidePanel.style.transform = "translateX(0)";
-                    sidePanel.style.opacity = "1";
-                  }, 10);
-
-                  document.getElementById("closePanel").addEventListener("click", () => {
-                    sidePanel.style.transform = "translateX(100%)";
-                    sidePanel.style.opacity = "0";
-                    setTimeout(() => {
-                      sidePanel.style.display = "none";
-                    }, 300);
-                  });
-
-                } catch (error) {
-                  console.error("Error loading game details:", error);
-                  alert("Failed to load detailed game info. Please try again.");
-                }
-              });
-
-              resultsContainer.appendChild(card);
-            });
-          } else {
-            resultsContainer.innerHTML = "<p style='color:white'>No results found.</p>";
-          }
-        } else {
-          resultsContainer.innerHTML = `<p>Error: ${results.error}</p>`;
-        }
-      } catch (error) {
-        console.error("Search error:", error);
-        if (resultsContainer) {
-          resultsContainer.innerHTML = "<p>Server error. Please try again later.</p>";
-        }
+        displayResults(results);
+      } catch (err) {
+        console.error("Erreur recherche designer:", err);
+        resultsContainer.innerHTML = "<p style='color:white'>Erreur serveur. Réessaie plus tard.</p>";
       }
-    });
-  }
+      return;
+    }
 
-// Reset Button
-if (resetBtn) {
-  resetBtn.addEventListener("click", () => {
-    if (searchForm) searchForm.reset();
-    if (resultsContainer) resultsContainer.innerHTML = "";
+    // 🔍 Recherche générale
+    const searchData = {
+      year,
+      minPlayers,
+      playtime,
+      maxPlayers,
+      keywords: []
+    };
+
+    if (name) searchData.keywords.push(name);
+    if (mechanic) searchData.keywords.push(mechanic);
+    if (category) searchData.keywords.push(category);
+    if (designer) searchData.keywords.push(designer);
+
+    try {
+      const res = await fetch("http://localhost:3000/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(searchData)
+      });
+
+      const results = await res.json();
+      if (!res.ok) throw new Error(results.error || "Search failed");
+
+      displayResults(results);
+    } catch (err) {
+      console.error("Search error:", err);
+      resultsContainer.innerHTML = "<p style='color:white'>Server error. Please try again later.</p>";
+    }
   });
 }
 
+function displayResults(results) {
+  resultsContainer.innerHTML = results.length > 0
+    ? results.map(game => {
+        const img = game.img?.startsWith("http") ? game.img : "../img/placeholder.jpg";
+        return `
+          <div class="game-card" data-id="${game.id_bg}">
+            <img src="${img}" alt="${game.name}" class="game-image">
+            <div class="game-info">
+              <h3>${game.name}</h3>
+              <p><strong>Published:</strong> ${game.yearpublished || "?"}</p>
+              <p><strong>Players:</strong> ${game.minplayers} – ${game.maxplayers}</p>
+              <p><strong>Time:</strong> ${game.playingtime} min</p>
+            </div>
+          </div>
+        `;
+      }).join("")
+    : "<p style='color:white'>No results found.</p>";
+
+  [...resultsContainer.querySelectorAll(".game-card")].forEach(card => {
+    card.addEventListener("click", async () => {
+      const gameId = card.getAttribute("data-id");
+      const game = results.find(g => g.id_bg == gameId);
+      try {
+        const resDetails = await fetch(`http://localhost:3000/api/game/${gameId}`);
+        if (!resDetails.ok) {
+          const errorText = await resDetails.text();
+          console.error("Error fetching game details:", errorText);
+          alert("Failed to fetch game details: " + errorText);
+          return;
+        }
+
+        const details = await resDetails.json();
+        sidePanel.innerHTML = `
+          <button id="closePanel" style="position:absolute;top:10px;right:10px;background:#444;color:white;border:none;border-radius:50%;width:35px;height:35px;font-size:18px;cursor:pointer;">✕</button>
+          <h2 style="margin-top:50px;">${game.name}</h2>
+          <img src="${game.img}" alt="${game.name}" style="width: 100%; margin-bottom: 10px;">
+          <p><strong>Description:</strong> ${game.description || "No description available."}</p>
+          <p><strong>Players:</strong> ${game.minplayers} – ${game.maxplayers}</p>
+          <p><strong>Publisher(s):</strong> ${details.publishers.join(", ") || "Unknown"}</p>
+          <p><strong>Designer(s):</strong> ${details.designers.join(", ") || "Unknown"}</p>
+          <p><strong>Mechanic(s):</strong> ${details.mechanics.join(", ") || "Unknown"}</p>
+          <p><strong>Category(ies):</strong> ${details.categories.join(", ") || "Unknown"}</p>
+          <p><strong>Avg Rating:</strong> ${game.average || "?"}</p>
+        `;
+
+        sidePanel.style.display = "block";
+        setTimeout(() => {
+          sidePanel.style.transform = "translateX(0)";
+          sidePanel.style.opacity = "1";
+        }, 10);
+
+        document.getElementById("closePanel").addEventListener("click", () => {
+          sidePanel.style.transform = "translateX(100%)";
+          sidePanel.style.opacity = "0";
+          setTimeout(() => sidePanel.style.display = "none", 300);
+        });
+
+      } catch (err) {
+        console.error("Game detail error:", err);
+        alert(err.message || "Failed to fetch game details");
+      }
+    });
+  });
+}
+
+if (resetBtn) {
+  resetBtn.addEventListener("click", () => {
+    searchForm.reset();
+    resultsContainer.innerHTML = "";
+  });
+}
+
+// Top rate
+document.getElementById("topRatedBtn").addEventListener("click", async () => {
+  try {
+    // Récupération des jeux les mieux notés sans changement de page
+    const res = await fetch("http://localhost:3000/api/top-rated");
+    const results = await res.json();
+
+    if (!res.ok) throw new Error(results.error || "Erreur lors du chargement des jeux");
+
+    // Affichage des résultats
+    displayResults(results);
+  } catch (err) {
+    console.error("Erreur Top Rated:", err);
+    resultsContainer.innerHTML = "<p style='color:white'>Erreur serveur.</p>";
+  }
+});
+
+
+
+  // Reset Button
+  resetBtn?.addEventListener("click", () => {
+    searchForm?.reset();
+    if (resultsContainer) resultsContainer.innerHTML = "";
+  });
+
 // Add Button
 const addBtn = document.getElementById("addBtn");
-
 if (addBtn) {
   addBtn.addEventListener("click", async () => {
+    
     const fields = [
-      "bg_id", "title", "description", "release_date", "min_p",
-      "max_p", "time_p", "minage", "owned", "designer", "wanting",
-      "artwork_url", "publisher", "category", "meca_g",
-      "user_rating", "average_rating", "game_extention_id", "extansion_name"
-    ];
+  "bg_id", "title", "description", "release_date", "min_p", "max_p", "time_p", "minage", "owned",
+  "designer", "wanting", "artwork_url", "publisher", "category", "meca_g",
+  "user_rating", "average_rating", "game_extention_id", "extansion_name"
+];
+
+
     const data = {};
     let firstInvalid = null;
 
-    fields.forEach(id => {
+   
+    for (const id of fields) {
       const input = document.getElementById(id);
       if (input) {
+        console.log(`Collecting ${id}:`, input.value);  
         input.style.border = "";
-        data[id] = input.value;
+        data[id] = input.value.trim();
+      } else {
+        console.log(`Field ${id} not found!`); 
       }
-    });
+    }
 
-    ["bg_id", "title", "description", "release_date", "min_p", "max_p", "time_p", "minage"].forEach(id => {
+ 
+    const requiredFields = [
+  "bg_id", "title", "description", "release_date", "min_p", "max_p", "time_p", "minage",
+  "owned", "designer", "wanting", "publisher", "category", "meca_g"
+];
+
+    requiredFields.forEach(id => {
       const input = document.getElementById(id);
       if (input && !input.value.trim()) {
         input.style.border = "2px solid red";
@@ -222,56 +270,62 @@ if (addBtn) {
       }
     });
 
+
     if (firstInvalid) {
-      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-      alert("Please fill in all mandatory fields highlighted in red.");
-      return;
+      firstInvalid.scrollIntoView({ behavior: "smooth" });
+      return alert("Please fill all required fields.");
     }
 
+   
+    console.log("Data to be sent:", data);
+
+   
     const addData = {
-      bg_id: parseInt(data.bg_id),
-      title: data.title,
-      description: data.description,
-      release_date: parseInt(data.release_date) || 0,
-      min_p: parseInt(data.min_p) || 0,
-      max_p: parseInt(data.max_p) || 0,
-      time_p: parseInt(data.time_p) || 0,
-      minage: parseInt(data.minage) || 0,
-      owned: parseInt(data.owned) || 0,
-      designer: data.designer ? data.designer.split(";").map(s => s.trim()) : [],
-      wanting: parseInt(data.wanting) || 0,
-      artwork_url: data.artwork_url || '',
-      publisher: data.publisher ? data.publisher.split(";").map(s => s.trim()) : [],
-      category: data.category ? data.category.split(";").map(s => s.trim()) : [],
-      meca_g: data.meca_g ? data.meca_g.split(";").map(s => s.trim()) : [],
-      user_rating: parseInt(data.user_rating) || 0,
-      average_rating: parseFloat(data.average_rating) || 0,
-      game_extention_id: parseInt(data.game_extention_id),
-      extansion_name: data.extansion_name
+      bg_id: +data.bg_id || 0, 
+      title: data.title || "",  
+      description: data.description || "",  
+      release_date: data.release_date ? +data.release_date : null, 
+      min_p: +data.min_p || 0, 
+      max_p: +data.max_p || 0,  
+      time_p: +data.time_p || 0,  
+      minage: +data.minage || 0,  
+      owned: +data.owned || 0,  
+      designer: data.designer.split(";").map(s => s.trim()) || [], 
+      wanting: +data.wanting || 0,  
+      artwork_url: data.artwork_url || null,  
+      publisher: data.publisher.split(";").map(s => s.trim()) || [],  
+      category: data.category.split(";").map(s => s.trim()) || [],  
+      meca_g: data.meca_g.split(";").map(s => s.trim()) || [], 
+      user_rating: +data.user_rating || 0,  
+      average_rating: +parseFloat(data.average_rating) || 0,  
+      game_extention_id: +data.game_extention_id || null, 
+      extansion_name: data.extansion_name || null  
     };
 
+   
+    console.log("Data to be sent after transformation:", addData);
+
+ 
     try {
-      const response = await fetch("http://localhost:3000/api/add", {
+      const res = await fetch("http://localhost:3000/api/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(addData)
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to add the board game.");
-      }
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || "Failed to add");
 
       alert("Board game added successfully!");
-    } catch (error) {
-      console.error("Add error:", error);
-      alert(error.message || "An unexpected error occurred.");
+    } catch (err) {
+      console.error("Add error:", err);
+      alert(err.message);
     }
   });
 }
 
-// Delete Button
+  
+  // Delete Button
 const deleteButton = document.getElementById("deleteBtn");
 
 if (deleteButton) {
@@ -353,7 +407,6 @@ function showConfirmation(message, onConfirm) {
   confirmYes.addEventListener('click', onConfirmClick);
   confirmNo.addEventListener('click', onCancelClick);
 }
-
 // Search Modify Button
 const modifsearchBtn = document.getElementById("modifsearchBtn");
 
@@ -373,7 +426,6 @@ if (modifsearchBtn) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error fetching game details");
 
-      console.log(data);
       document.querySelector("[name='BD_ID']").value = searchId;
       document.querySelector("[name='Title']").value = data.name || '';
       document.querySelector("[name='Description']").value = data.description || '';
@@ -391,8 +443,6 @@ if (modifsearchBtn) {
       document.querySelector("[name='MecaG']").value = data.mechanic_name || '';
       document.querySelector("[name='UserR']").value = data.user_rating || '';
       document.querySelector("[name='AvgR']").value = data.average_rating || '';
-      document.querySelector("[name='Ex_IDG']").value = data.bgext_id || '';
-      document.querySelector("[name='ExName']").value = data.expansion_name || '';
 
       document.getElementById("modifyForm").style.display = "block";
 
@@ -405,45 +455,49 @@ if (modifsearchBtn) {
 
 // Update Button
 const updateBtn = document.getElementById("updateBtn");
+
 if (updateBtn) {
   updateBtn.addEventListener("click", async () => {
-    const formData = {
-      id_bg: document.querySelector("[name='BD_ID']").value,
-      title: document.querySelector("[name='Title']").value,
-      description: document.querySelector("[name='Description']").value,
-      release_date: document.querySelector("[name='ReleaseDate']").value,
-      min_p: document.querySelector("[name='MinP']").value,
-      max_p: document.querySelector("[name='MaxP']").value,
-      time_p: document.querySelector("[name='TimeP']").value,
-      minage: document.querySelector("[name='Minage']").value,
-      owned: document.querySelector("[name='Owned']").value,
-      designer: document.querySelector("[name='Designer']").value,
-      wanting: document.querySelector("[name='Wanting']").value,
-      artwork_url: document.querySelector("[name='ArtworkUrl']").value,
-      publisher: document.querySelector("[name='Publisher']").value,
-      category: document.querySelector("[name='Category']").value,
-      meca_g: document.querySelector("[name='MecaG']").value,
-      user_rating: document.querySelector("[name='UserR']").value,
-      average_rating: document.querySelector("[name='AvgR']").value,
-      game_extention_id: document.querySelector("[name='Ex_IDG']").value,
-      extansion_name: document.querySelector("[name='ExName']").value
+    const updatedGame = {
+      id_bg: document.querySelector("[name='BD_ID']").value.trim(),
+      name: document.querySelector("[name='Title']").value.trim(),
+      description: document.querySelector("[name='Description']").value.trim(),
+      yearpublished: document.querySelector("[name='ReleaseDate']").value.trim(),
+      min_p: parseInt(document.querySelector("[name='MinP']").value.trim()) || null,
+      max_p: parseInt(document.querySelector("[name='MaxP']").value.trim()) || null,
+      time_p: parseInt(document.querySelector("[name='TimeP']").value.trim()) || null,
+      minage: parseInt(document.querySelector("[name='Minage']").value.trim()) || null,
+      owned: parseInt(document.querySelector("[name='Owned']").value.trim()) || null,
+      wanting: parseInt(document.querySelector("[name='Wanting']").value.trim()) || null,
+      designer: document.querySelector("[name='Designer']").value.trim(),
+      artwork_url: document.querySelector("[name='ArtworkUrl']").value.trim(),
+      publisher: document.querySelector("[name='Publisher']").value.trim(),
+      category: document.querySelector("[name='Category']").value.trim(),
+      meca_g: document.querySelector("[name='MecaG']").value.trim(),
+      user_rating: parseInt(document.querySelector("[name='UserR']").value.trim()) || null,
+      average_rating: parseFloat(document.querySelector("[name='AvgR']").value.trim()) || null
     };
 
     try {
-      const response = await fetch('http://localhost:3000/api/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      const response = await fetch("http://localhost:3000/api/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedGame)
       });
+
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Error updating game");
+
+      if (!response.ok) {
+        throw new Error(result.error || "Update failed");
+      }
 
       alert("Game updated successfully!");
-      window.location.reload();
     } catch (error) {
       console.error("Update error:", error);
-      alert(error.message);
+      alert("Error: " + error.message);
     }
-    });
-  }
+  });
+}
+
+
 });
