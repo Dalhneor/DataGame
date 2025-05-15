@@ -11,8 +11,21 @@ The aim of this project is to create a site featuring a large number of board ga
 
 ## Installation
 
+-> need to run the my sql script "reset_db.sql" in my sql workbench.
+-> In "server.js" change the XXX to your identifier : 
+(async () => {
+  const db = await mysql.createPool({
+    host: "localhost",
+    user: "XXX",
+    password: "XXX",
+    database: "boardgameDB",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
+
 Open a terminal and them enter:
-- cd gobelins-tavern 
+- cd goblins-tavern 
 - node server.js
 
-ALTER TABLE Board_Game MODIFY yearpublished INT UNSIGNED DEFAULT NULL;
+
