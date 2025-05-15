@@ -200,8 +200,6 @@ app.get('/api/top-rated', async (req, res) => {
   }
 });
 
-
-
   app.get('/api/deletebg/:id', async (req, res) => {
     const gameId = req.params.id;
     try {
@@ -299,48 +297,52 @@ app.post('/api/add', async (req, res) => {
     game_extention_id = null, extansion_name = null
   } = req.body;
 
- const mandatoryFields = [
-  "bg_id", "title", "description", "release_date",
-  "min_p", "max_p", "time_p", "minage",
-  "owned", "designer", "wanting", "publisher",
-  "category", "meca_g"
-];
+  const mandatoryFields = [
+    "bg_id", "title", "description", "release_date",
+    "min_p", "max_p", "time_p", "minage",
+    "owned", "designer", "wanting", "publisher",
+    "category", "meca_g"
+  ];
 
-for (const field of mandatoryFields) {
-  if (
-    req.body[field] === undefined ||
-    req.body[field] === null ||
-    (typeof req.body[field] === "string" && req.body[field].trim() === "")
-  ) {
-    return res.status(400).json({ message: `Field '${field}' is required.` });
+  for (const field of mandatoryFields) {
+    if (
+      req.body[field] === undefined ||
+      req.body[field] === null ||
+      (typeof req.body[field] === "string" && req.body[field].trim() === "") ||
+      (Array.isArray(req.body[field]) && req.body[field].length === 0)
+    ) {
+      return res.status(400).json({ message: `Field '${field}' is required.` });
+    }
   }
-}
-
 
   const conn = await db.getConnection();
 
   try {
     await conn.beginTransaction();
 
+    // Supprimer doublons et nettoyer (trim + filtre valeurs vides)
+    const unique = arr => [...new Set(arr.map(e => e.trim()).filter(Boolean))];
 
-    const designerName = Array.isArray(designer) && designer.length > 0 ? designer[0] : null;
-    const publisherName = Array.isArray(publisher) && publisher.length > 0 ? publisher[0] : null;
-    const categoryName = Array.isArray(category) && category.length > 0 ? category[0] : null;
-    const mechanicName = Array.isArray(meca_g) && meca_g.length > 0 ? meca_g[0] : null;
+    const designers = unique(designer);
+    const publishers = unique(publisher);
+    const categories = unique(category);
+    const mechanics = unique(meca_g);
 
-
+    // Fonction d'insertion unique dans tables de référence
     const refInsert = async (table, name) => {
-      if (name) {
-        await conn.query(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
-      }
+      await conn.query(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
     };
 
+    for (const name of designers) await refInsert('BG_Designer', name);
+    for (const name of publishers) await refInsert('BG_Publisher', name);
+    for (const name of categories) await refInsert('BG_Category', name);
+    for (const name of mechanics) await refInsert('BG_Mechanic', name);
 
-    if (designerName) await refInsert('BG_Designer', designerName);
-    if (publisherName) await refInsert('BG_Publisher', publisherName);
-    if (categoryName) await refInsert('BG_Category', categoryName);
-    if (mechanicName) await refInsert('BG_Mechanic', mechanicName);
-
+    // Appeler la procédure avec les premiers éléments comme principaux (ou NULL si absent)
+    const mainDesigner = designers[0] || null;
+    const mainPublisher = publishers[0] || null;
+    const mainCategory = categories[0] || null;
+    const mainMechanic = mechanics[0] || null;
 
     const callProcedureSQL = `CALL AddBoardGameFull(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
@@ -349,9 +351,25 @@ for (const field of mandatoryFields) {
       min_p, max_p, time_p, minage,
       owned, wanting, artwork_url,
       user_rating, average_rating,
-      designerName, publisherName, categoryName, mechanicName
+      mainDesigner, mainPublisher, mainCategory, mainMechanic
     ]);
 
+    // Fonction pour insérer dans tables de liaison (hors le premier déjà inséré par la procédure)
+    const insertRelation = async (table, idField, fieldName, items) => {
+      for (const name of items.slice(1)) { // on skip le premier qui est déjà inséré
+        await conn.query(
+          `INSERT IGNORE INTO ${table} (id_bg, ${fieldName}) VALUES (?, ?)`,
+          [bg_id, name]
+        );
+      }
+    };
+
+    await insertRelation('Designed_By', 'id_bg', 'designer_name', designers);
+    await insertRelation('Published_By', 'id_bg', 'publisher_name', publishers);
+    await insertRelation('Is_Of_Category', 'id_bg', 'category_name', categories);
+    await insertRelation('Uses_Mechanic', 'id_bg', 'mechanic_name', mechanics);
+
+    // Gestion de l'extension
     if (game_extention_id && extansion_name) {
       await conn.query(
         `INSERT INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
@@ -370,6 +388,8 @@ for (const field of mandatoryFields) {
     conn.release();
   }
 });
+
+
 
   app.listen(PORT, () => {
     console.log(`Server ready at http://localhost:${PORT}`);

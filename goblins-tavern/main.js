@@ -205,21 +205,31 @@ if (resetBtn) {
 }
 
 // Top rate
-document.getElementById("topRatedBtn").addEventListener("click", async () => {
-  try {
-   
-    const res = await fetch("http://localhost:3000/api/top-rated");
-    const results = await res.json();
+document.addEventListener("DOMContentLoaded", () => {
+  const topRatedBtn = document.getElementById("topRatedBtn");
+  const resultsContainer = document.getElementById("resultsContainer"); // à adapter à ton vrai conteneur
 
-    if (!res.ok) throw new Error(results.error || "Erreur lors du chargement des jeux");
+  if (topRatedBtn) {
+    topRatedBtn.addEventListener("click", async () => {
+      try {
+        const res = await fetch("http://localhost:3000/api/top-rated");
+        const results = await res.json();
 
-   
-    displayResults(results);
-  } catch (err) {
-    console.error("Erreur Top Rated:", err);
-    resultsContainer.innerHTML = "<p style='color:white'>Erreur serveur.</p>";
+        if (!res.ok) throw new Error(results.error || "Erreur lors du chargement des jeux");
+
+        displayResults(results);
+      } catch (err) {
+        console.error("Erreur Top Rated:", err);
+        if (resultsContainer) {
+          resultsContainer.innerHTML = "<p style='color:white'>Erreur serveur.</p>";
+        }
+      }
+    });
+  } else {
+    console.warn("⚠️ Le bouton #topRatedBtn n'existe pas dans le DOM.");
   }
 });
+
 
 
 
