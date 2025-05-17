@@ -193,7 +193,7 @@ app.post('/api/search/designer', async (req, res) => {
 app.get('/api/top-rated', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM Top_Rated_Games');
-    res.json(rows);
+    res.status(200).json(rows);
   } catch (err) {
     console.error("Erreur lors de la récupération des jeux les mieux notés :", err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -320,7 +320,7 @@ app.post('/api/add', async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // Supprimer doublons et nettoyer (trim + filtre valeurs vides)
+
     const unique = arr => [...new Set(arr.map(e => e.trim()).filter(Boolean))];
 
     const designers = unique(designer);
@@ -328,7 +328,6 @@ app.post('/api/add', async (req, res) => {
     const categories = unique(category);
     const mechanics = unique(meca_g);
 
-    // Fonction d'insertion unique dans tables de référence
     const refInsert = async (table, name) => {
       await conn.query(`INSERT IGNORE INTO ${table} (name) VALUES (?)`, [name]);
     };
@@ -338,7 +337,7 @@ app.post('/api/add', async (req, res) => {
     for (const name of categories) await refInsert('BG_Category', name);
     for (const name of mechanics) await refInsert('BG_Mechanic', name);
 
-    // Appeler la procédure avec les premiers éléments comme principaux (ou NULL si absent)
+
     const mainDesigner = designers[0] || null;
     const mainPublisher = publishers[0] || null;
     const mainCategory = categories[0] || null;
@@ -354,9 +353,9 @@ app.post('/api/add', async (req, res) => {
       mainDesigner, mainPublisher, mainCategory, mainMechanic
     ]);
 
-    // Fonction pour insérer dans tables de liaison (hors le premier déjà inséré par la procédure)
+ 
     const insertRelation = async (table, idField, fieldName, items) => {
-      for (const name of items.slice(1)) { // on skip le premier qui est déjà inséré
+      for (const name of items.slice(1)) { 
         await conn.query(
           `INSERT IGNORE INTO ${table} (id_bg, ${fieldName}) VALUES (?, ?)`,
           [bg_id, name]
@@ -369,7 +368,7 @@ app.post('/api/add', async (req, res) => {
     await insertRelation('Is_Of_Category', 'id_bg', 'category_name', categories);
     await insertRelation('Uses_Mechanic', 'id_bg', 'mechanic_name', mechanics);
 
-    // Gestion de l'extension
+
     if (game_extention_id && extansion_name) {
       await conn.query(
         `INSERT INTO BG_Expansion (id_bge, name, id_bg) VALUES (?, ?, ?)`,
