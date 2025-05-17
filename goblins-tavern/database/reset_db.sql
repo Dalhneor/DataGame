@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS Board_Game (
                                           id_bg INTEGER PRIMARY KEY,
                                           name VARCHAR(150) NOT NULL,
                                           description TEXT NOT NULL,
-                                            yearpublished INT UNSIGNED NOT NULL,
+                                          yearpublished INT UNSIGNED DEFAULT NULL,
                                           minplayers TINYINT UNSIGNED NOT NULL,
                                           maxplayers TINYINT UNSIGNED NOT NULL,
                                           playingtime SMALLINT,
@@ -59,15 +59,8 @@ CREATE TABLE IF NOT EXISTS Published_By (
                                             FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg),
                                             FOREIGN KEY (publisher_name) REFERENCES BG_Publisher(name)
 );
--- =ICI CIC CICICICICC
-ALTER TABLE Board_Game MODIFY yearpublished INT UNSIGNED DEFAULT NULL;
 
--- ========================================
---               VIEWS
--- ========================================
-
-
--- Resume/essential information
+-- Resume/essential information ICI
 CREATE VIEW Resume_Game_Info AS
 SELECT name, yearpublished, minplayers, maxplayers, playingtime, img
 FROM Board_Game
@@ -75,14 +68,15 @@ ORDER BY name;
 
 -- Top 10 games based on average rating
 CREATE VIEW Top_Rated_Games AS
-SELECT id_bg, name, average, users_rated, yearpublished, playingtime, minage
+SELECT id_bg, name, average, users_rated, yearpublished, playingtime, minage, img
 FROM Board_Game
 WHERE users_rated > 1000
 ORDER BY average DESC
 LIMIT 10;
 
+
 -- ========================================
---               INDEXES
+--               INDEXES ICI
 -- ========================================
 
 CREATE INDEX idx_publisher_game ON Published_By(publisher_name, id_bg);
@@ -91,7 +85,7 @@ CREATE INDEX idx_mechanic_name ON Uses_Mechanic(mechanic_name);
 CREATE INDEX idx_designer_game ON Designed_By(designer_name, id_bg);
 
 -- ========================================
---               TRIGGERS
+--               TRIGGERS 
 -- ========================================
 
 -- Prevent duplicate publishers
@@ -239,4 +233,46 @@ LEFT JOIN Uses_Mechanic m ON bg.id_bg = m.id_bg
 LEFT JOIN Designed_By d ON bg.id_bg = d.id_bg
 LEFT JOIN Published_By p ON bg.id_bg = p.id_bg
 GROUP BY bg.id_bg;
+
+-- Drop old constraints
+ALTER TABLE BG_Expansion DROP FOREIGN KEY BG_Expansion_ibfk_1;
+ALTER TABLE Is_Of_Category DROP FOREIGN KEY Is_Of_Category_ibfk_1;
+ALTER TABLE Uses_Mechanic DROP FOREIGN KEY Uses_Mechanic_ibfk_1;
+ALTER TABLE Designed_By DROP FOREIGN KEY Designed_By_ibfk_1;
+ALTER TABLE Published_By DROP FOREIGN KEY Published_By_ibfk_1;
+
+-- Re-add them with ON DELETE CASCADE
+ALTER TABLE BG_Expansion 
+    ADD CONSTRAINT fk_bgexpansion_boardgame 
+    FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
+    ON DELETE CASCADE;
+
+ALTER TABLE Is_Of_Category 
+    ADD CONSTRAINT fk_isofcategory_boardgame 
+    FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
+    ON DELETE CASCADE;
+
+ALTER TABLE Uses_Mechanic 
+    ADD CONSTRAINT fk_usesmechanic_boardgame 
+    FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
+    ON DELETE CASCADE;
+
+ALTER TABLE Designed_By 
+    ADD CONSTRAINT fk_designedby_boardgame 
+    FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
+    ON DELETE CASCADE;
+
+ALTER TABLE Published_By 
+    ADD CONSTRAINT fk_publishedby_boardgame 
+    FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
+    ON DELETE CASCADE;
+
+
+SELECT * FROM Board_Game
+WHERE id_bg = 123456;
+SELECT * FROM Is_Of_Category WHERE id_bg = 123456;
+
+DELETE FROM Board_Game WHERE id_bg = 123456;
+
+
 
