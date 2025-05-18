@@ -131,7 +131,16 @@ function displayResults(results) {
           <p><strong>Designer(s):</strong> ${details.designers.join(", ") || "Unknown"}</p>
           <p><strong>Mechanic(s):</strong> ${details.mechanics.join(", ") || "Unknown"}</p>
           <p><strong>Category(ies):</strong> ${details.categories.join(", ") || "Unknown"}</p>
-          <p><strong>Avg Rating:</strong> ${game.average || "?"}</p>
+          <p><strong>Avg Rating:</strong> <span id="avg-rating"> ${game.average || "?"}</p>
+          <p><strong>Would you like to rate the game ?</strong></p>
+          <div id="rating-stars" style="margin: 10px 0;">
+            <span class="star" data-value="1">★</span>
+            <span class="star" data-value="2">★</span>
+            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span>
+            <span class="star" data-value="5">★</span>
+          </div><br>
+          <p id="rating-feedback" style="color:lightgreen;"></p><br>
         `;
 
         sidePanel.style.display = "block";
@@ -144,6 +153,37 @@ function displayResults(results) {
           sidePanel.style.transform = "translateX(100%)";
           sidePanel.style.opacity = "0";
           setTimeout(() => sidePanel.style.display = "none", 300);
+        });
+
+        document.querySelectorAll("#rating-stars .star").forEach(star => {
+          star.style.cursor = "pointer";
+          star.style.fontSize = "24px";
+          star.style.color = "#aaa";
+
+          star.addEventListener("click", async () => {
+            const rating = parseInt(star.dataset.value);
+            try {
+              const res = await fetch("http://localhost:3000/api/rate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id_bg: gameId, rating })
+              });
+
+              const result = await res.json();
+              if (res.ok) {
+                document.getElementById("rating-feedback").textContent = "Merci pour votre note !";
+                const newAverage = result.newAverage;
+                document.getElementById("avg-rating").textContent = newAverage;
+                console.log("Nouvelle moyenne :", newAverage);
+                
+              } else {
+                document.getElementById("rating-feedback").textContent = "Erreur : " + result.error;
+              }
+            } catch (err) {
+              document.getElementById("rating-feedback").textContent = "Erreur lors de la notation.";
+              console.error("Erreur d'envoi de la note :", err);
+            }
+          });
         });
 
       } catch (err) {
