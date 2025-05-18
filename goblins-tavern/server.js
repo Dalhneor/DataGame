@@ -198,7 +198,7 @@ app.post('/api/rate', async (req, res) => {
     await db.query('UPDATE Board_Game SET users_rated = ?, average = ? WHERE id_bg = ?', [
       newUsersRated, parseFloat(newAverage.toFixed(2)), id_bg
     ]);
-    res.json({ message: "Rating updated successfully.", newAverage: newAverage.toFixed(2) });
+    res.json({ message: "Rating updated successfully.", newUsersRated , newAverage: newAverage.toFixed(2) });
   } catch (err) {
     console.error("Erreur mise à jour rating:", err);
     res.status(500).json({ error: "Server error." });

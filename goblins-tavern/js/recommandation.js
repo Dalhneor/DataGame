@@ -131,7 +131,8 @@ function displayResults(results) {
           <p><strong>Designer(s):</strong> ${details.designers.join(", ") || "Unknown"}</p>
           <p><strong>Mechanic(s):</strong> ${details.mechanics.join(", ") || "Unknown"}</p>
           <p><strong>Category(ies):</strong> ${details.categories.join(", ") || "Unknown"}</p>
-          <p><strong>Avg Rating:</strong> <span id="avg-rating"> ${game.average || "?"}</p>
+          <p><strong>Number of User Rating: </strong><span id="user-rating">${game.users_rated}</span></p>
+          <p><strong>Avg Rating: </strong> <span id="avg-rating">${game.average || "?"}</span></p>
           <p><strong>Would you like to rate the game ?</strong></p>
           <div id="rating-stars" style="margin: 10px 0;">
             <span class="star" data-value="1">★</span>
@@ -171,10 +172,11 @@ function displayResults(results) {
 
               const result = await res.json();
               if (res.ok) {
-                document.getElementById("rating-feedback").textContent = "Merci pour votre note !";
+                alert("Thanks for your rating !")
+                const newUsersRated = result.newUsersRated;
                 const newAverage = result.newAverage;
+                document.getElementById("user-rating").textContent = newUsersRated;
                 document.getElementById("avg-rating").textContent = newAverage;
-                console.log("Nouvelle moyenne :", newAverage);
                 
               } else {
                 document.getElementById("rating-feedback").textContent = "Erreur : " + result.error;
