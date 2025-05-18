@@ -75,18 +75,18 @@ ORDER BY average DESC
 LIMIT 10;
 
 
--- ========================================
---               INDEXES ICI
--- ========================================
+
+--INDEXES ICI
+
 
 CREATE INDEX idx_publisher_game ON Published_By(publisher_name, id_bg);
 CREATE INDEX idx_category_game ON Is_Of_Category(category_name, id_bg);
 CREATE INDEX idx_mechanic_name ON Uses_Mechanic(mechanic_name);
 CREATE INDEX idx_designer_game ON Designed_By(designer_name, id_bg);
 
--- ========================================
---               TRIGGERS 
--- ========================================
+
+--TRIGGERS 
+
 
 -- Prevent duplicate publishers
 DELIMITER $$
@@ -126,11 +126,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ========================================
---           STORED PROCEDURES
--- ========================================
 
-
+--STORED PROCEDURES
 -- Get all game details
 DELIMITER $$
 CREATE PROCEDURE GetBoardGameDetails(IN p_id_bg INT)
@@ -230,6 +227,7 @@ RETURNS TEXT
 DETERMINISTIC
 BEGIN
   DECLARE output TEXT;
+  SET str = CONCAT(str, delim); 
   SET output = SUBSTRING_INDEX(SUBSTRING_INDEX(str, delim, pos), delim, -1);
   IF output = '' THEN
     SET output = NULL;
@@ -245,18 +243,18 @@ DELIMITER $$
 
 CREATE PROCEDURE AddBoardGameFull(
     IN p_id_bg INT,
-    IN p_name VARCHAR(255),
+    IN p_name VARCHAR(150),
     IN p_description TEXT,
-    IN p_year INT,
-    IN p_minplayers INT,
-    IN p_maxplayers INT,
-    IN p_playingtime INT,
-    IN p_minage INT,
-    IN p_owned INT,
-    IN p_wanting INT,
-    IN p_img VARCHAR(255),
+    IN p_year INT UNSIGNED,
+    IN p_minplayers TINYINT UNSIGNED,
+    IN p_maxplayers TINYINT UNSIGNED,
+    IN p_playingtime SMALLINT,
+    IN p_minage TINYINT UNSIGNED,
+    IN p_owned MEDIUMINT UNSIGNED,
+    IN p_wanting SMALLINT UNSIGNED,
+    IN p_img TEXT,
     IN p_users_rated INT,
-    IN p_average FLOAT,
+    IN p_average REAL,
     IN p_designer_names TEXT,
     IN p_publisher_names TEXT,
     IN p_category_names TEXT,
@@ -264,9 +262,7 @@ CREATE PROCEDURE AddBoardGameFull(
 )
 BEGIN
     DECLARE i INT DEFAULT 1;
-    DECLARE name TEXT;
-
-    -- Insert main Board_Game record
+    DECLARE name VARCHAR(150);
     INSERT INTO Board_Game (
         id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime,
         minage, owned, wanting, img, users_rated, average
@@ -276,7 +272,6 @@ BEGIN
         p_playingtime, p_minage, p_owned, p_wanting, p_img, p_users_rated, p_average
     );
 
-    -- Designers
     SET i = 1;
     WHILE SplitString(p_designer_names, ';', i) IS NOT NULL DO
         SET name = TRIM(SplitString(p_designer_names, ';', i));
@@ -285,7 +280,6 @@ BEGIN
         SET i = i + 1;
     END WHILE;
 
-    -- Publishers
     SET i = 1;
     WHILE SplitString(p_publisher_names, ';', i) IS NOT NULL DO
         SET name = TRIM(SplitString(p_publisher_names, ';', i));
@@ -294,7 +288,6 @@ BEGIN
         SET i = i + 1;
     END WHILE;
 
-    -- Categories
     SET i = 1;
     WHILE SplitString(p_category_names, ';', i) IS NOT NULL DO
         SET name = TRIM(SplitString(p_category_names, ';', i));
@@ -303,7 +296,6 @@ BEGIN
         SET i = i + 1;
     END WHILE;
 
-    -- Mechanics
     SET i = 1;
     WHILE SplitString(p_mechanic_names, ';', i) IS NOT NULL DO
         SET name = TRIM(SplitString(p_mechanic_names, ';', i));
@@ -319,9 +311,10 @@ DELIMITER ;
 
 SELECT * FROM Board_Game
 WHERE id_bg = 123456;
+
 SELECT * FROM Is_Of_Category WHERE id_bg = 123456;
-SELECT * FROM Published_By WHERE id_bg = 123456;
 SELECT * FROM Designed_By WHERE id_bg = 123456;
+SELECT * FROM Designed_By;
 
 
 DELETE FROM Board_Game WHERE id_bg = 123456;
