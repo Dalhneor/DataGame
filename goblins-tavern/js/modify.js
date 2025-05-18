@@ -25,12 +25,12 @@ if (modifsearchBtn) {
       document.querySelector("[name='TimeP']").value = data.playingtime || '';
       document.querySelector("[name='Minage']").value = data.minage || '';
       document.querySelector("[name='Owned']").value = data.owned || '';
-      document.querySelector("[name='Designer']").value = data.designer_name || '';
+      document.querySelector("[name='Designer']").value = (data.designers || []).join('; ');
       document.querySelector("[name='Wanting']").value = data.wanting || '';
       document.querySelector("[name='ArtworkUrl']").value = data.img || '';
-      document.querySelector("[name='Publisher']").value = data.publisher_name || '';
-      document.querySelector("[name='Category']").value = data.bg_category_name || '';
-      document.querySelector("[name='MecaG']").value = data.mechanic_name || '';
+      document.querySelector("[name='Publisher']").value = (data.publishers || []).join('; ');
+      document.querySelector("[name='Category']").value = (data.categories || []).join('; ');
+      document.querySelector("[name='MecaG']").value = (data.mechanics || []).join('; ');
       document.querySelector("[name='UserR']").value = data.user_rating || '';
       document.querySelector("[name='AvgR']").value = data.average_rating || '';
 

@@ -40,40 +40,52 @@ const PORT = 3000;
   });
 
   app.post('/api/game-details', async (req, res) => {
-    const { id_bg } = req.body;
-    if (!id_bg) return res.status(400).json({ error: "id_bg is required" });
+  const { id_bg } = req.body;
+  if (!id_bg) return res.status(400).json({ error: "id_bg is required" });
 
-    const query = `
-      SELECT 
-        bg.*,
-        d.name AS designer_name,
-        p.name AS publisher_name,
-        m.name AS mechanic_name,
-        bgc.name AS bg_category_name,
-        bge.id_bge AS bgext_id,
-        bge.name AS expansion_name
-      FROM Board_Game bg
-      LEFT JOIN Designed_By db ON bg.id_bg = db.id_bg
-      LEFT JOIN BG_Designer d ON db.designer_name = d.name
-      LEFT JOIN Published_By pb ON bg.id_bg = pb.id_bg
-      LEFT JOIN BG_Publisher p ON pb.publisher_name = p.name
-      LEFT JOIN Uses_Mechanic um ON bg.id_bg = um.id_bg
-      LEFT JOIN BG_Mechanic m ON um.mechanic_name = m.name
-      LEFT JOIN Is_Of_Category cat ON bg.id_bg = cat.id_bg
-      LEFT JOIN BG_Category bgc ON cat.category_name = bgc.name
-      LEFT JOIN BG_Expansion bge ON bg.id_bg = bge.id_bg
-      WHERE bg.id_bg = ?
-      GROUP BY bg.id_bg
-    `;
+  try {
+    // 1. Get main game info (single row)
+    const [games] = await db.query(`SELECT * FROM Board_Game WHERE id_bg = ?`, [id_bg]);
+    if (games.length === 0) return res.status(404).json({ error: "Board game not found" });
+    const game = games[0];
 
-    try {
-      const [rows] = await db.query(query, [id_bg]);
-      if (rows.length === 0) return res.status(404).json({ error: "Board game not found" });
-      res.json(rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+    // 2. Get all designers (array)
+    const [designers] = await db.query(
+      `SELECT designer_name FROM Designed_By WHERE id_bg = ?`, [id_bg]
+    );
+    game.designers = designers.map(d => d.designer_name);
+
+    // 3. Get all publishers (array)
+    const [publishers] = await db.query(
+      `SELECT publisher_name FROM Published_By WHERE id_bg = ?`, [id_bg]
+    );
+    game.publishers = publishers.map(p => p.publisher_name);
+
+    // 4. Get all categories (array)
+    const [categories] = await db.query(
+      `SELECT category_name FROM Is_Of_Category WHERE id_bg = ?`, [id_bg]
+    );
+    game.categories = categories.map(c => c.category_name);
+
+    // 5. Get all mechanics (array)
+    const [mechanics] = await db.query(
+      `SELECT mechanic_name FROM Uses_Mechanic WHERE id_bg = ?`, [id_bg]
+    );
+    game.mechanics = mechanics.map(m => m.mechanic_name);
+
+    // 6. Get expansions (optional, array)
+    const [expansions] = await db.query(
+      `SELECT id_bge, name FROM BG_Expansion WHERE id_bg = ?`, [id_bg]
+    );
+    game.expansions = expansions;
+
+    res.json(game);
+
+  } catch (err) {
+    console.error("Fetch game details failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
   app.post('/api/search', async (req, res) => {
     const { year, minPlayers, maxPlayers, playtime, keywords } = req.body;
@@ -198,7 +210,7 @@ app.post('/api/rate', async (req, res) => {
     await db.query('UPDATE Board_Game SET users_rated = ?, average = ? WHERE id_bg = ?', [
       newUsersRated, parseFloat(newAverage.toFixed(2)), id_bg
     ]);
-    res.json({ message: "Rating updated successfully.", newUsersRated , newAverage: newAverage.toFixed(2) });
+    res.json({ message: "Rating updated successfully.", newAverage: newAverage.toFixed(2) });
   } catch (err) {
     console.error("Erreur mise à jour rating:", err);
     res.status(500).json({ error: "Server error." });
@@ -221,7 +233,7 @@ app.post('/api/search/designer', async (req, res) => {
 app.get('/api/top-rated', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM Top_Rated_Games');
-    res.status(200).json(rows);
+    res.json(rows);
   } catch (err) {
     console.error("Erreur lors de la récupération des jeux les mieux notés :", err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -273,10 +285,11 @@ app.post('/api/update', async (req, res) => {
   } = req.body;
 
   if (!id_bg || !name || !description || !yearpublished) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return res.status(400).json({ error: "Missing required fields: id_bg, name, description, yearpublished" });
   }
 
   try {
+
     const updateBoardGameQuery = `
       UPDATE Board_Game
       SET 
@@ -290,28 +303,58 @@ app.post('/api/update', async (req, res) => {
       minage, owned, wanting, artwork_url, user_rating, average_rating, id_bg
     ];
     await db.query(updateBoardGameQuery, boardGameParams);
+
     await db.query(`DELETE FROM Designed_By WHERE id_bg = ?`, [id_bg]);
     if (designer && designer.trim()) {
-      await db.query(`INSERT INTO Designed_By (id_bg, designer_name) VALUES (?, ?)`, [id_bg, designer]);
+      const designers = designer.split(";").map(d => d.trim()).filter(Boolean);
+      for (const d of designers) {
+        const [existing] = await db.query(`SELECT 1 FROM bg_designer WHERE name = ?`, [d]);
+        if (existing.length === 0) {
+          await db.query(`INSERT INTO bg_designer (name) VALUES (?)`, [d]);
+        }
+        await db.query(`INSERT INTO Designed_By (id_bg, designer_name) VALUES (?, ?)`, [id_bg, d]);
+      }
     }
     await db.query(`DELETE FROM Published_By WHERE id_bg = ?`, [id_bg]);
     if (publisher && publisher.trim()) {
-      await db.query(`INSERT INTO Published_By (id_bg, publisher_name) VALUES (?, ?)`, [id_bg, publisher]);
+      const publishers = publisher.split(";").map(p => p.trim()).filter(Boolean);
+      for (const p of publishers) {
+        const [existing] = await db.query(`SELECT 1 FROM bg_publisher WHERE name = ?`, [p]);
+        if (existing.length === 0) {
+          await db.query(`INSERT INTO bg_publisher (name) VALUES (?)`, [p]);
+        }
+        await db.query(`INSERT INTO Published_By (id_bg, publisher_name) VALUES (?, ?)`, [id_bg, p]);
+      }
     }
     await db.query(`DELETE FROM Is_Of_Category WHERE id_bg = ?`, [id_bg]);
     if (category && category.trim()) {
-      await db.query(`INSERT INTO Is_Of_Category (id_bg, category_name) VALUES (?, ?)`, [id_bg, category]);
+      const categories = category.split(";").map(c => c.trim()).filter(Boolean);
+      for (const c of categories) {
+        const [existing] = await db.query(`SELECT 1 FROM bg_category WHERE name = ?`, [c]);
+        if (existing.length === 0) {
+          await db.query(`INSERT INTO bg_category (name) VALUES (?)`, [c]);
+        }
+        await db.query(`INSERT INTO Is_Of_Category (id_bg, category_name) VALUES (?, ?)`, [id_bg, c]);
+      }
     }
+
     await db.query(`DELETE FROM Uses_Mechanic WHERE id_bg = ?`, [id_bg]);
     if (meca_g && meca_g.trim()) {
-      await db.query(`INSERT INTO Uses_Mechanic (id_bg, mechanic_name) VALUES (?, ?)`, [id_bg, meca_g]);
+      const mechanics = meca_g.split(";").map(m => m.trim()).filter(Boolean);
+      for (const m of mechanics) {
+        const [existing] = await db.query(`SELECT 1 FROM bg_mechanic WHERE name = ?`, [m]);
+        if (existing.length === 0) {
+          await db.query(`INSERT INTO bg_mechanic (name) VALUES (?)`, [m]);
+        }
+        await db.query(`INSERT INTO Uses_Mechanic (id_bg, mechanic_name) VALUES (?, ?)`, [id_bg, m]);
+      }
     }
 
     res.json({ message: "Game updated successfully!" });
 
   } catch (err) {
     console.error("Update failed:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "An error occurred while updating the game." });
   }
 });
 
@@ -416,7 +459,33 @@ app.post('/api/add', async (req, res) => {
   }
 });
 
+app.post('/api/rate', async (req, res) => {
+  const { id_bg, rating } = req.body;
 
+  if (!id_bg || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "Invalid input." });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT users_rated, average FROM Board_Game WHERE id_bg = ?', [id_bg]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Board game not found." });
+    }
+
+    const current = rows[0];
+    const newUsersRated = current.users_rated + 1;
+    const newAverage = ((current.average * current.users_rated) + rating) / newUsersRated;
+
+    await db.query('UPDATE Board_Game SET users_rated = ?, average = ? WHERE id_bg = ?', [
+      newUsersRated, parseFloat(newAverage.toFixed(2)), id_bg
+    ]);
+    res.json({ message: "Rating updated successfully.", newAverage: newAverage.toFixed(2) });
+  } catch (err) {
+    console.error("Erreur mise à jour rating:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+});
 
   app.listen(PORT, () => {
     console.log(`Server ready at http://localhost:${PORT}`);
