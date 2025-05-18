@@ -135,11 +135,11 @@ function displayResults(results) {
           <p><strong>Avg Rating: </strong> <span id="avg-rating">${game.average || "?"}</span></p>
           <p><strong>Would you like to rate the game ?</strong></p>
           <div id="rating-stars" style="margin: 10px 0;">
-            <span class="star" data-value="1">★</span>
-            <span class="star" data-value="2">★</span>
-            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="2>★</span>
             <span class="star" data-value="4">★</span>
-            <span class="star" data-value="5">★</span>
+            <span class="star" data-value="6">★</span>
+            <span class="star" data-value="8">★</span>
+            <span class="star" data-value="10">★</span>
           </div><br>
           <p id="rating-feedback" style="color:lightgreen;"></p><br>
         `;
