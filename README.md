@@ -24,6 +24,8 @@ The aim of this project is to create a site featuring a large number of board ga
     queueLimit: 0
   });
 
+  -> run populate.js with node populate.js in a terminal
+
 Open a terminal and them enter:
 - cd goblins-tavern 
 - node server.js
