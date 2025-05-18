@@ -289,7 +289,7 @@ app.post('/api/update', async (req, res) => {
   }
 
   try {
-    // Update main Board_Game table
+
     const updateBoardGameQuery = `
       UPDATE Board_Game
       SET 
@@ -304,7 +304,6 @@ app.post('/api/update', async (req, res) => {
     ];
     await db.query(updateBoardGameQuery, boardGameParams);
 
-    // === Designed_By ===
     await db.query(`DELETE FROM Designed_By WHERE id_bg = ?`, [id_bg]);
     if (designer && designer.trim()) {
       const designers = designer.split(";").map(d => d.trim()).filter(Boolean);
@@ -316,8 +315,6 @@ app.post('/api/update', async (req, res) => {
         await db.query(`INSERT INTO Designed_By (id_bg, designer_name) VALUES (?, ?)`, [id_bg, d]);
       }
     }
-
-    // === Published_By ===
     await db.query(`DELETE FROM Published_By WHERE id_bg = ?`, [id_bg]);
     if (publisher && publisher.trim()) {
       const publishers = publisher.split(";").map(p => p.trim()).filter(Boolean);
@@ -329,8 +326,6 @@ app.post('/api/update', async (req, res) => {
         await db.query(`INSERT INTO Published_By (id_bg, publisher_name) VALUES (?, ?)`, [id_bg, p]);
       }
     }
-
-    // === Is_Of_Category ===
     await db.query(`DELETE FROM Is_Of_Category WHERE id_bg = ?`, [id_bg]);
     if (category && category.trim()) {
       const categories = category.split(";").map(c => c.trim()).filter(Boolean);
@@ -343,7 +338,6 @@ app.post('/api/update', async (req, res) => {
       }
     }
 
-    // === Uses_Mechanic ===
     await db.query(`DELETE FROM Uses_Mechanic WHERE id_bg = ?`, [id_bg]);
     if (meca_g && meca_g.trim()) {
       const mechanics = meca_g.split(";").map(m => m.trim()).filter(Boolean);
