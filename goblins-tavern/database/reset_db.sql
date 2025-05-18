@@ -76,7 +76,7 @@ LIMIT 10;
 
 
 
---INDEXES ICI
+-- INDEXES
 
 
 CREATE INDEX idx_publisher_game ON Published_By(publisher_name, id_bg);
@@ -85,7 +85,7 @@ CREATE INDEX idx_mechanic_name ON Uses_Mechanic(mechanic_name);
 CREATE INDEX idx_designer_game ON Designed_By(designer_name, id_bg);
 
 
---TRIGGERS 
+-- TRIGGERS 
 
 
 -- Prevent duplicate publishers
@@ -127,7 +127,7 @@ END$$
 DELIMITER ;
 
 
---STORED PROCEDURES
+-- STORED PROCEDURES
 -- Get all game details
 DELIMITER $$
 CREATE PROCEDURE GetBoardGameDetails(IN p_id_bg INT)
@@ -239,7 +239,7 @@ DELIMITER ;
 
 DELIMITER $$
 
-
+DELIMITER $$
 
 CREATE PROCEDURE AddBoardGameFull(
     IN p_id_bg INT,
@@ -263,6 +263,15 @@ CREATE PROCEDURE AddBoardGameFull(
 BEGIN
     DECLARE i INT DEFAULT 1;
     DECLARE name VARCHAR(150);
+
+   
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
+    BEGIN
+        ROLLBACK;
+    END;
+
+    START TRANSACTION;
+
     INSERT INTO Board_Game (
         id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime,
         minage, owned, wanting, img, users_rated, average
@@ -271,6 +280,7 @@ BEGIN
         p_id_bg, p_name, p_description, p_year, p_minplayers, p_maxplayers,
         p_playingtime, p_minage, p_owned, p_wanting, p_img, p_users_rated, p_average
     );
+
 
     SET i = 1;
     WHILE SplitString(p_designer_names, ';', i) IS NOT NULL DO
@@ -304,20 +314,12 @@ BEGIN
         SET i = i + 1;
     END WHILE;
 
+    COMMIT;
 END$$
 
 DELIMITER ;
 
 
-SELECT * FROM Board_Game
-WHERE id_bg = 123456;
-
-SELECT * FROM Is_Of_Category WHERE id_bg = 123456;
-SELECT * FROM Designed_By WHERE id_bg = 123456;
-SELECT * FROM Designed_By;
-
-
-DELETE FROM Board_Game WHERE id_bg = 123456;
 
 
 
