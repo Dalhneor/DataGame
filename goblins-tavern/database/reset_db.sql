@@ -130,50 +130,6 @@ DELIMITER ;
 --           STORED PROCEDURES
 -- ========================================
 
--- Add a complete new board game
-DELIMITER $$
-CREATE PROCEDURE AddBoardGameFull(
-    IN p_id_bg INT,
-    IN p_name VARCHAR(255),
-    IN p_description TEXT,
-    IN p_year INT,
-    IN p_minplayers INT,
-    IN p_maxplayers INT,
-    IN p_playingtime INT,
-    IN p_minage INT,
-    IN p_owned INT,
-    IN p_wanting INT,
-    IN p_img VARCHAR(255),
-    IN p_users_rated INT,
-    IN p_average FLOAT,
-    IN p_designer_name VARCHAR(255),
-    IN p_publisher_name VARCHAR(255),
-    IN p_category_name VARCHAR(255),
-    IN p_mechanic_name VARCHAR(255)
-)
-BEGIN
-    INSERT INTO Board_Game (
-        id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime,
-        minage, owned, wanting, img, users_rated, average
-    )
-    VALUES (
-        p_id_bg, p_name, p_description, p_year, p_minplayers, p_maxplayers,
-        p_playingtime, p_minage, p_owned, p_wanting, p_img, p_users_rated, p_average
-    );
-
-    INSERT INTO Designed_By (id_bg, designer_name)
-    VALUES (p_id_bg, p_designer_name);
-
-    INSERT INTO Published_By (id_bg, publisher_name)
-    VALUES (p_id_bg, p_publisher_name);
-
-    INSERT INTO Is_Of_Category (id_bg, category_name)
-    VALUES (p_id_bg, p_category_name);
-
-    INSERT INTO Uses_Mechanic (id_bg, mechanic_name)
-    VALUES (p_id_bg, p_mechanic_name);
-END$$
-DELIMITER ;
 
 -- Get all game details
 DELIMITER $$
@@ -267,10 +223,106 @@ ALTER TABLE Published_By
     FOREIGN KEY (id_bg) REFERENCES Board_Game(id_bg) 
     ON DELETE CASCADE;
 
+DELIMITER $$
+
+CREATE FUNCTION SplitString(str TEXT, delim CHAR(1), pos INT)
+RETURNS TEXT
+DETERMINISTIC
+BEGIN
+  DECLARE output TEXT;
+  SET output = SUBSTRING_INDEX(SUBSTRING_INDEX(str, delim, pos), delim, -1);
+  IF output = '' THEN
+    SET output = NULL;
+  END IF;
+  RETURN output;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+
+
+CREATE PROCEDURE AddBoardGameFull(
+    IN p_id_bg INT,
+    IN p_name VARCHAR(255),
+    IN p_description TEXT,
+    IN p_year INT,
+    IN p_minplayers INT,
+    IN p_maxplayers INT,
+    IN p_playingtime INT,
+    IN p_minage INT,
+    IN p_owned INT,
+    IN p_wanting INT,
+    IN p_img VARCHAR(255),
+    IN p_users_rated INT,
+    IN p_average FLOAT,
+    IN p_designer_names TEXT,
+    IN p_publisher_names TEXT,
+    IN p_category_names TEXT,
+    IN p_mechanic_names TEXT
+)
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    DECLARE name TEXT;
+
+    -- Insert main Board_Game record
+    INSERT INTO Board_Game (
+        id_bg, name, description, yearpublished, minplayers, maxplayers, playingtime,
+        minage, owned, wanting, img, users_rated, average
+    )
+    VALUES (
+        p_id_bg, p_name, p_description, p_year, p_minplayers, p_maxplayers,
+        p_playingtime, p_minage, p_owned, p_wanting, p_img, p_users_rated, p_average
+    );
+
+    -- Designers
+    SET i = 1;
+    WHILE SplitString(p_designer_names, ';', i) IS NOT NULL DO
+        SET name = TRIM(SplitString(p_designer_names, ';', i));
+        INSERT IGNORE INTO BG_Designer (name) VALUES (name);
+        INSERT IGNORE INTO Designed_By (id_bg, designer_name) VALUES (p_id_bg, name);
+        SET i = i + 1;
+    END WHILE;
+
+    -- Publishers
+    SET i = 1;
+    WHILE SplitString(p_publisher_names, ';', i) IS NOT NULL DO
+        SET name = TRIM(SplitString(p_publisher_names, ';', i));
+        INSERT IGNORE INTO BG_Publisher (name) VALUES (name);
+        INSERT IGNORE INTO Published_By (id_bg, publisher_name) VALUES (p_id_bg, name);
+        SET i = i + 1;
+    END WHILE;
+
+    -- Categories
+    SET i = 1;
+    WHILE SplitString(p_category_names, ';', i) IS NOT NULL DO
+        SET name = TRIM(SplitString(p_category_names, ';', i));
+        INSERT IGNORE INTO BG_Category (name) VALUES (name);
+        INSERT IGNORE INTO Is_Of_Category (id_bg, category_name) VALUES (p_id_bg, name);
+        SET i = i + 1;
+    END WHILE;
+
+    -- Mechanics
+    SET i = 1;
+    WHILE SplitString(p_mechanic_names, ';', i) IS NOT NULL DO
+        SET name = TRIM(SplitString(p_mechanic_names, ';', i));
+        INSERT IGNORE INTO BG_Mechanic (name) VALUES (name);
+        INSERT IGNORE INTO Uses_Mechanic (id_bg, mechanic_name) VALUES (p_id_bg, name);
+        SET i = i + 1;
+    END WHILE;
+
+END$$
+
+DELIMITER ;
+
 
 SELECT * FROM Board_Game
 WHERE id_bg = 123456;
 SELECT * FROM Is_Of_Category WHERE id_bg = 123456;
+SELECT * FROM Published_By WHERE id_bg = 123456;
+SELECT * FROM Designed_By WHERE id_bg = 123456;
+
 
 DELETE FROM Board_Game WHERE id_bg = 123456;
 
