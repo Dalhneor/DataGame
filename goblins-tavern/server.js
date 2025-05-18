@@ -189,6 +189,34 @@ app.post('/api/search/category', async (req, res) => {
   }
 });
 
+app.post('/api/rate', async (req, res) => {
+  const { id_bg, rating } = req.body;
+
+  if (!id_bg || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "Invalid input." });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT users_rated, average FROM Board_Game WHERE id_bg = ?', [id_bg]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Board game not found." });
+    }
+
+    const current = rows[0];
+    const newUsersRated = current.users_rated + 1;
+    const newAverage = ((current.average * current.users_rated) + rating) / newUsersRated;
+
+    await db.query('UPDATE Board_Game SET users_rated = ?, average = ? WHERE id_bg = ?', [
+      newUsersRated, parseFloat(newAverage.toFixed(2)), id_bg
+    ]);
+    res.json({ message: "Rating updated successfully.", newAverage: newAverage.toFixed(2) });
+  } catch (err) {
+    console.error("Erreur mise à jour rating:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+});
+
 app.post('/api/search/designer', async (req, res) => {
   const { designer } = req.body;
 
