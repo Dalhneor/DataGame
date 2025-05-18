@@ -139,9 +139,18 @@ function displayResults(results) {
           <div style="margin: 10px 0;">
             <input type="range" id="rating-slider" min="1" max="10" value="5" step="1" style="width: 100%;">
             <p style="margin-top:5px;">Current chosen rate : <span id="rating-value">5</span></p>
-            <button id="submit-rating" style="margin-top: 10px;">Envoyer</button>
+            <button id="submit-rating" style="
+              background-color: #82d785; 
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-size: 16px;
+              cursor: pointer;
+              transition: background-color 0.3s ease;">Envoyer</button>
           </div>
-          <p id="rating-feedback" style="color:lightgreen;"></p>
+          <br>
+          <p id="rating-feedback" style="color:lightgreen;"></p><br>
         `;
 
         sidePanel.style.display = "block";
