@@ -134,14 +134,12 @@ function displayResults(results) {
           <p><strong>Number of User Rating: </strong><span id="user-rating">${game.users_rated}</span></p>
           <p><strong>Avg Rating: </strong> <span id="avg-rating">${game.average || "?"}</span></p>
           <p><strong>Would you like to rate the game ?</strong></p>
-          <div id="rating-stars" style="margin: 10px 0;">
-            <span class="star" data-value="2>★</span>
-            <span class="star" data-value="4">★</span>
-            <span class="star" data-value="6">★</span>
-            <span class="star" data-value="8">★</span>
-            <span class="star" data-value="10">★</span>
-          </div><br>
-          <p id="rating-feedback" style="color:lightgreen;"></p><br>
+          <div style="margin: 10px 0;">
+            <input type="range" id="rating-slider" min="1" max="10" value="5" step="1" style="width: 100%;">
+            <p style="margin-top:5px;">Current chosen rate : <span id="rating-value">5</span></p>
+            <button id="submit-rating" style="margin-top: 10px;">Envoyer</button>
+          </div>
+          <p id="rating-feedback" style="color:lightgreen;"></p>
         `;
 
         sidePanel.style.display = "block";
@@ -156,36 +154,39 @@ function displayResults(results) {
           setTimeout(() => sidePanel.style.display = "none", 300);
         });
 
-        document.querySelectorAll("#rating-stars .star").forEach(star => {
-          star.style.cursor = "pointer";
-          star.style.fontSize = "24px";
-          star.style.color = "#aaa";
+        const slider = document.getElementById("rating-slider");
+        const ratingValue = document.getElementById("rating-value");
 
-          star.addEventListener("click", async () => {
-            const rating = parseInt(star.dataset.value);
-            try {
-              const res = await fetch("http://localhost:3000/api/rate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id_bg: gameId, rating })
-              });
+        slider.addEventListener("input", () => {
+          ratingValue.textContent = slider.value;
+        });
 
-              const result = await res.json();
-              if (res.ok) {
-                alert("Thanks for your rating !")
-                const newUsersRated = result.newUsersRated;
-                const newAverage = result.newAverage;
-                document.getElementById("user-rating").textContent = newUsersRated;
-                document.getElementById("avg-rating").textContent = newAverage;
-                
-              } else {
-                document.getElementById("rating-feedback").textContent = "Erreur : " + result.error;
-              }
-            } catch (err) {
-              document.getElementById("rating-feedback").textContent = "Erreur lors de la notation.";
-              console.error("Erreur d'envoi de la note :", err);
+        document.getElementById("submit-rating").addEventListener("click", async () => {
+          const rating = parseInt(slider.value);
+          if (isNaN(rating) || rating < 1 || rating > 10) {
+            document.getElementById("rating-feedback").textContent = "Chose a rate from 1 to 10";
+            return;
+          }
+
+          try {
+            const res = await fetch("http://localhost:3000/api/rate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id_bg: gameId, rating })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+              alert("Thanks for rating !");
+              document.getElementById("user-rating").textContent = parseInt(document.getElementById("user-rating").textContent) + 1;
+              document.getElementById("avg-rating").textContent = result.newAverage;
+            } else {
+              document.getElementById("rating-feedback").textContent = "Error : " + result.error;
             }
-          });
+          } catch (err) {
+            document.getElementById("rating-feedback").textContent = "Error for sending the rating";
+            console.error("Error for sending the rating :", err);
+          }
         });
 
       } catch (err) {

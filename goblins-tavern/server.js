@@ -192,7 +192,7 @@ app.post('/api/search/category', async (req, res) => {
 app.post('/api/rate', async (req, res) => {
   const { id_bg, rating } = req.body;
 
-  if (!id_bg || rating < 2 || rating > 10) {
+  if (!id_bg || rating < 1 || rating > 10) {
     return res.status(400).json({ error: "Invalid input." });
   }
 
