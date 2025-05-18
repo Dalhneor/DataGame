@@ -110,7 +110,7 @@ function displayResults(results) {
   [...resultsContainer.querySelectorAll(".game-card")].forEach(card => {
     card.addEventListener("click", async () => {
       const gameId = card.getAttribute("data-id");
-      const game = results.find(g => g.id_bg == gameId);
+
       try {
         const resDetails = await fetch(`http://localhost:3000/api/game/${gameId}`);
         if (!resDetails.ok) {
@@ -121,6 +121,8 @@ function displayResults(results) {
         }
 
         const details = await resDetails.json();
+        const game = details.info;
+
         sidePanel.innerHTML = `
           <button id="closePanel" style="position:absolute;top:10px;right:10px;background:#444;color:white;border:none;border-radius:50%;width:35px;height:35px;font-size:18px;cursor:pointer;">✕</button>
           <h2 style="margin-top:50px;">${game.name}</h2>
@@ -178,8 +180,16 @@ function displayResults(results) {
             const result = await res.json();
             if (res.ok) {
               alert("Thanks for rating !");
-              document.getElementById("user-rating").textContent = parseInt(document.getElementById("user-rating").textContent) + 1;
-              document.getElementById("avg-rating").textContent = result.newAverage;
+
+              const updatedRes = await fetch(`http://localhost:3000/api/game/${gameId}`);
+              if (!updatedRes.ok) throw new Error("Could not refresh game details.");
+
+              const updatedDetails = await updatedRes.json();
+              const updatedGame = updatedDetails.info;
+
+              document.getElementById("user-rating").textContent = updatedDetails.info?.users_rated;
+              document.getElementById("avg-rating").textContent = updatedDetails.info?.average;
+              document.getElementById("rating-feedback").textContent = "Rating updated!";
             } else {
               document.getElementById("rating-feedback").textContent = "Error : " + result.error;
             }
